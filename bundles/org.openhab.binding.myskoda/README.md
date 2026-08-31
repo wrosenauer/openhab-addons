@@ -37,8 +37,8 @@ command - the updated state shows up on the vehicle's next scheduled poll.
 ## Obtaining an API Key
 
 1. Open the MySkoda app, go to **Settings > Developer > API keys**.
-2. Create a new key and select which vehicle(s) it should cover.
-3. Copy the key into the `account` bridge's `apiKey` configuration parameter.
+1. Create a new key and select which vehicle(s) it should cover.
+1. Copy the key into the `account` bridge's `apiKey` configuration parameter.
 
 Keys expire; the binding surfaces the last known expiry as the `apiKeyExpiresAt` property on the
 `account` bridge. There is no refresh-token mechanism - when a key expires, generate a new one in
