@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="fuel-values">
+		<label>Fuel &amp; Range</label>
+		<description>Fuel level and driving range. Only reported for vehicles with a combustion engine, including
+			hybrids -
+			battery-electric vehicles report state of charge and range under Charging instead. The
+			secondary engine channels are
+			only populated for plug-in hybrids.</description>
+		<channels>
+			<channel id="car-type" typeId="car-type"/>
+			<channel id="adblue-range" typeId="adblue-range"/>
+			<channel id="total-range" typeId="total-range"/>
+			<channel id="primary-engine-type" typeId="engine-type"/>
+			<channel id="primary-state-of-charge" typeId="engine-state-of-charge"/>
+			<channel id="primary-fuel-level" typeId="engine-fuel-level"/>
+			<channel id="primary-range" typeId="engine-range"/>
+			<channel id="secondary-engine-type" typeId="engine-type"/>
+			<channel id="secondary-state-of-charge" typeId="engine-state-of-charge"/>
+			<channel id="secondary-fuel-level" typeId="engine-fuel-level"/>
+			<channel id="secondary-range" typeId="engine-range"/>
+			<channel id="last-updated" typeId="fuel-last-updated"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="car-type">
+		<item-type>String</item-type>
+		<label>Car Type</label>
+		<state readOnly="true">
+			<options>
+				<option value="HYBRID">Hybrid</option>
+				<option value="GASOLINE">Gasoline</option>
+				<option value="DIESEL">Diesel</option>
+				<option value="CNG">CNG</option>
+				<option value="LPG">LPG</option>
+				<option value="UNKNOWN">Unknown</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="adblue-range" advanced="true">
+		<item-type>Number:Length</item-type>
+		<label>AdBlue Range</label>
+		<description>Only reported for vehicles with a diesel engine.</description>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="total-range">
+		<item-type>Number:Length</item-type>
+		<label>Total Range</label>
+		<category>Distance</category>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="engine-type" advanced="true">
+		<item-type>String</item-type>
+		<label>Engine Type</label>
+		<state readOnly="true">
+			<options>
+				<option value="ELECTRIC">Electric</option>
+				<option value="GASOLINE">Gasoline</option>
+				<option value="DIESEL">Diesel</option>
+				<option value="CNG">CNG</option>
+				<option value="LPG">LPG</option>
+				<option value="UNKNOWN">Unknown</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="engine-state-of-charge" advanced="true">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Engine State of Charge</label>
+		<category>Battery</category>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="engine-fuel-level" advanced="true">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Engine Fuel Level</label>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="engine-range">
+		<item-type>Number:Length</item-type>
+		<label>Engine Range</label>
+		<category>Distance</category>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="fuel-last-updated" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Fuel Status Last Updated</label>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+
+</thing:thing-descriptions>

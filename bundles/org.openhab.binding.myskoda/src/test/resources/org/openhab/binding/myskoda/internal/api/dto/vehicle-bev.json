@@ -1,0 +1,83 @@
+{
+  "vehicle": {
+    "vin": "TMBJB9NY5RF999999",
+    "name": "My Enyaq",
+    "licensePlate": "1MB 1234",
+    "renderUrl": "https://www.example.com/render",
+    "status": {
+      "overall": {
+        "doorsLocked": "YES",
+        "locked": "YES",
+        "doors": "CLOSED",
+        "windows": "CLOSED",
+        "lights": "OFF",
+        "reliableLockStatus": "LOCKED"
+      },
+      "detail": {
+        "sunroof": "CLOSED",
+        "trunk": "CLOSED",
+        "bonnet": "CLOSED"
+      },
+      "carCapturedTimestamp": "2026-06-01T12:00:00Z"
+    },
+    "odometer": {
+      "mileageInKm": 12753,
+      "carCapturedTimestamp": "2026-06-01T12:00:00Z"
+    },
+    "parkingPosition": {
+      "state": "PARKED",
+      "gpsCoordinates": {
+        "latitude": 37.4224428,
+        "longitude": -122.0842467
+      },
+      "formattedAddress": "Prazska 4A, 10200 Prague, Czech Republic"
+    },
+    "charging": {
+      "isVehicleInSavedLocation": true,
+      "status": {
+        "chargingRateInKilometersPerHour": 20.17,
+        "chargePowerInKw": 20.17,
+        "remainingTimeToFullyChargedInMinutes": 15,
+        "fullyChargedAt": "2026-06-01T14:00:00Z",
+        "state": "CHARGING",
+        "chargeType": "DC",
+        "battery": {
+          "remainingCruisingRangeInMeters": 249000,
+          "stateOfChargeInPercent": 71
+        }
+      },
+      "settings": {
+        "targetStateOfChargeInPercent": 80,
+        "batteryCareModeTargetValueInPercent": 80,
+        "preferredChargeMode": "MANUAL",
+        "chargingCareMode": "ACTIVATED",
+        "autoUnlockPlugWhenCharged": "PERMANENT",
+        "maxChargeCurrentAc": "MAXIMUM",
+        "maxChargeCurrentAcAmpere": 10
+      },
+      "carCapturedTimestamp": "2026-06-01T12:00:00Z"
+    },
+    "airConditioning": {
+      "state": "HEATING",
+      "targetTemperature": {
+        "value": 22.5,
+        "unit": "CELSIUS"
+      },
+      "estimatedReachOfTargetTemperatureAt": "2026-06-12T07:30:00Z",
+      "airConditioningWithoutExternalPower": true,
+      "airConditioningAtUnlock": false,
+      "windowHeating": {
+        "enabled": true,
+        "front": "ON",
+        "rear": "OFF"
+      },
+      "carCapturedTimestamp": "2026-06-01T12:00:00Z"
+    }
+  },
+  "errors": [
+    {
+      "type": "FUEL_STATUS_UNSUPPORTED",
+      "description": "Battery-electric vehicles do not report fuel status."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="odometer-values">
+		<label>Odometer</label>
+		<description>Current mileage of the vehicle.</description>
+		<channels>
+			<channel id="mileage" typeId="mileage"/>
+			<channel id="last-updated" typeId="odometer-last-updated"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="mileage">
+		<item-type>Number:Length</item-type>
+		<label>Mileage</label>
+		<description>Total distance travelled.</description>
+		<category>Distance</category>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="odometer-last-updated" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Odometer Last Updated</label>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+
+</thing:thing-descriptions>

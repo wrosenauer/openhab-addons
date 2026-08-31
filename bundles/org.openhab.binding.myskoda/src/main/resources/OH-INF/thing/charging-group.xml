@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="charging-values">
+		<label>Charging</label>
+		<description>Charging and battery status. Only reported for vehicles that support charging
+			(battery-electric and
+			plug-in hybrid). The settings channels are read-only - the public API has no
+			endpoint to change them, only to
+			start/stop charging itself.</description>
+		<channels>
+			<channel id="state-of-charge" typeId="state-of-charge"/>
+			<channel id="remaining-range" typeId="remaining-range"/>
+			<channel id="charging-state" typeId="charging-state"/>
+			<channel id="charge-type" typeId="charge-type"/>
+			<channel id="charge-power" typeId="charge-power"/>
+			<channel id="charge-rate" typeId="charge-rate"/>
+			<channel id="remaining-time" typeId="remaining-time"/>
+			<channel id="fully-charged-at" typeId="fully-charged-at"/>
+			<channel id="target-state-of-charge" typeId="target-state-of-charge"/>
+			<channel id="battery-care-mode-target" typeId="battery-care-mode-target"/>
+			<channel id="preferred-charge-mode" typeId="preferred-charge-mode"/>
+			<channel id="charging-care-mode" typeId="charging-care-mode"/>
+			<channel id="auto-unlock-plug" typeId="auto-unlock-plug"/>
+			<channel id="max-charge-current" typeId="max-charge-current"/>
+			<channel id="max-charge-current-ampere" typeId="max-charge-current-ampere"/>
+			<channel id="charging-switch" typeId="charging-switch"/>
+			<channel id="last-updated" typeId="charging-last-updated"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="state-of-charge">
+		<item-type>Number:Dimensionless</item-type>
+		<label>State of Charge</label>
+		<category>Battery</category>
+		<tags>
+			<tag>Measurement</tag>
+			<tag>Energy</tag>
+		</tags>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="remaining-range">
+		<item-type>Number:Length</item-type>
+		<label>Remaining Range</label>
+		<category>Distance</category>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="charging-state">
+		<item-type>String</item-type>
+		<label>Charging State</label>
+		<tags>
+			<tag>Status</tag>
+			<tag>Mode</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="CONNECT_CABLE">Connect cable</option>
+				<option value="CHARGING">Charging</option>
+				<option value="CONSERVING">Conserving</option>
+				<option value="READY_FOR_CHARGING">Ready for charging</option>
+				<option value="DISCHARGING">Discharging</option>
+				<option value="CHARGING_INTERRUPTED">Charging interrupted</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="charge-type" advanced="true">
+		<item-type>String</item-type>
+		<label>Charge Type</label>
+		<state readOnly="true">
+			<options>
+				<option value="AC">AC</option>
+				<option value="DC">DC</option>
+				<option value="OFF">Off</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="charge-power" advanced="true">
+		<item-type>Number:Power</item-type>
+		<label>Charge Power</label>
+		<category>Energy</category>
+		<state pattern="%.1f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="charge-rate" advanced="true">
+		<item-type>Number:Speed</item-type>
+		<label>Charge Rate</label>
+		<description>Rate of charging in distance per hour.</description>
+		<state pattern="%.1f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="remaining-time">
+		<item-type>Number:Time</item-type>
+		<label>Remaining Time</label>
+		<description>Remaining time to fully charged.</description>
+		<category>Time</category>
+		<state pattern="%d %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="fully-charged-at" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Fully Charged At</label>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+	<channel-type id="target-state-of-charge" advanced="true">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Target State of Charge</label>
+		<category>Battery</category>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="battery-care-mode-target" advanced="true">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Battery Care Mode Target</label>
+		<category>Battery</category>
+		<state pattern="%.0f %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="preferred-charge-mode" advanced="true">
+		<item-type>String</item-type>
+		<label>Preferred Charge Mode</label>
+		<state readOnly="true">
+			<options>
+				<option value="MANUAL">Manual</option>
+				<option value="TIMER">Timer</option>
+				<option value="TIMER_CHARGING_WITH_CLIMATISATION">Timer charging with climatisation</option>
+				<option value="PREFERRED_CHARGING_TIMES">Preferred charging times</option>
+				<option value="ONLY_OWN_CURRENT">Only own current</option>
+				<option value="IMMEDIATE_DISCHARGING">Immediate discharging</option>
+				<option value="HOME_STORAGE_CHARGING">Home storage charging</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="charging-care-mode" advanced="true">
+		<item-type>String</item-type>
+		<label>Charging Care Mode</label>
+		<state readOnly="true">
+			<options>
+				<option value="ACTIVATED">Activated</option>
+				<option value="DEACTIVATED">Deactivated</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="auto-unlock-plug" advanced="true">
+		<item-type>String</item-type>
+		<label>Auto Unlock Plug When Charged</label>
+		<state readOnly="true">
+			<options>
+				<option value="PERMANENT">Permanent</option>
+				<option value="OFF">Off</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="max-charge-current" advanced="true">
+		<item-type>String</item-type>
+		<label>Max AC Charge Current</label>
+		<state readOnly="true">
+			<options>
+				<option value="REDUCED">Reduced</option>
+				<option value="MAXIMUM">Maximum</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="max-charge-current-ampere" advanced="true">
+		<item-type>Number</item-type>
+		<label>Max AC Charge Current (Ampere)</label>
+		<state pattern="%d A" readOnly="true"/>
+	</channel-type>
+	<channel-type id="charging-switch">
+		<item-type>Switch</item-type>
+		<label>Charging</label>
+		<description>Start or stop charging.</description>
+		<tags>
+			<tag>Switch</tag>
+			<tag>Energy</tag>
+		</tags>
+		<state readOnly="false"/>
+	</channel-type>
+	<channel-type id="charging-last-updated" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Charging Last Updated</label>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+
+</thing:thing-descriptions>

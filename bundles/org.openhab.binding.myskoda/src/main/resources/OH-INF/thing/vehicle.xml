@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<thing-type id="vehicle">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="account"/>
+		</supported-bridge-type-refs>
+
+		<label>MyŠkoda Vehicle</label>
+		<description>A Škoda vehicle registered to a MyŠkoda account. Not every channel is populated for every
+			vehicle - which
+			groups report data depends on the vehicle's drivetrain and equipment.</description>
+		<semantic-equipment-tag>Vehicle</semantic-equipment-tag>
+
+		<channel-groups>
+			<channel-group id="status" typeId="status-values"/>
+			<channel-group id="odometer" typeId="odometer-values"/>
+			<channel-group id="fuel" typeId="fuel-values"/>
+			<channel-group id="position" typeId="position-values"/>
+			<channel-group id="charging" typeId="charging-values"/>
+			<channel-group id="climate" typeId="climate-values"/>
+			<channel-group id="auxiliaryHeating" typeId="auxiliary-heating-values"/>
+			<channel-group id="activeVentilation" typeId="active-ventilation-values"/>
+		</channel-groups>
+
+		<config-description>
+			<parameter name="vin" type="text" required="true">
+				<label>VIN</label>
+				<description>Vehicle Identification Number.</description>
+			</parameter>
+			<parameter name="refreshInterval" type="integer" unit="min" min="1">
+				<label>Refresh Interval</label>
+				<description>Interval the vehicle is polled in minutes. The MySkoda API key has a shared budget of
+					only 20
+					requests/hour across all vehicles that use it, so keep this conservative - especially
+					when several vehicles share
+					one API key.</description>
+				<default>15</default>
+			</parameter>
+			<parameter name="sPin" type="text">
+				<context>password</context>
+				<label>Security PIN</label>
+				<description>Vehicle security PIN (S-PIN), required only to start auxiliary heating.</description>
+				<advanced>true</advanced>
+			</parameter>
+		</config-description>
+	</thing-type>
+
+</thing:thing-descriptions>

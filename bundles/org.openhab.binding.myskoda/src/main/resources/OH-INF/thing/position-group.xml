@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="position-values">
+		<label>Position</label>
+		<description>Last known parking position. When the vehicle is in motion, no coordinates or address are
+			reported.</description>
+		<channels>
+			<channel id="parking-state" typeId="parking-state"/>
+			<channel id="location" typeId="system.location"/>
+			<channel id="address" typeId="address"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="parking-state" advanced="true">
+		<item-type>String</item-type>
+		<label>Parking State</label>
+		<state readOnly="true">
+			<options>
+				<option value="PARKED">Parked</option>
+				<option value="IN_MOTION">In motion</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="address" advanced="true">
+		<item-type>String</item-type>
+		<label>Address</label>
+		<description>Formatted address of the vehicle's parking position.</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+</thing:thing-descriptions>

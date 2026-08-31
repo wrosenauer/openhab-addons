@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="active-ventilation-values">
+		<label>Active Ventilation</label>
+		<description>The vehicle's active ventilation.</description>
+		<channels>
+			<channel id="active-ventilation-state" typeId="active-ventilation-state"/>
+			<channel id="active-ventilation-duration" typeId="active-ventilation-duration"/>
+			<channel id="active-ventilation-switch" typeId="active-ventilation-switch"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="active-ventilation-state">
+		<item-type>String</item-type>
+		<label>Active Ventilation State</label>
+		<tags>
+			<tag>Status</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="OFF">Off</option>
+				<option value="PREHEATING">Preheating</option>
+				<option value="VENTILATION">Ventilation</option>
+				<option value="UNKNOWN">Unknown</option>
+				<option value="UNSUPPORTED">Unsupported</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="active-ventilation-duration" advanced="true">
+		<item-type>Number:Time</item-type>
+		<label>Duration</label>
+		<description>Duration the active ventilation runs for when started.</description>
+		<category>Time</category>
+		<state pattern="%d %unit%" readOnly="true"/>
+	</channel-type>
+	<channel-type id="active-ventilation-switch">
+		<item-type>Switch</item-type>
+		<label>Active Ventilation</label>
+		<description>Start or stop the active ventilation.</description>
+		<tags>
+			<tag>Switch</tag>
+		</tags>
+		<state readOnly="false"/>
+	</channel-type>
+
+</thing:thing-descriptions>

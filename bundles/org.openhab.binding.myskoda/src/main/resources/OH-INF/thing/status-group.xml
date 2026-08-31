@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="status-values">
+		<label>Vehicle Status</label>
+		<description>Doors, windows, lights and lock status.</description>
+		<channels>
+			<channel id="overall-doors-locked" typeId="overall-doors-locked"/>
+			<channel id="locked" typeId="locked"/>
+			<channel id="reliable-lock-status" typeId="reliable-lock-status"/>
+			<channel id="doors" typeId="doors"/>
+			<channel id="windows" typeId="windows"/>
+			<channel id="lights" typeId="lights"/>
+			<channel id="sunroof" typeId="sunroof"/>
+			<channel id="trunk" typeId="trunk"/>
+			<channel id="bonnet" typeId="bonnet"/>
+			<channel id="last-updated" typeId="status-last-updated"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="overall-doors-locked">
+		<item-type>String</item-type>
+		<label>Overall Doors Locked</label>
+		<description>Overall doors and trunk lock state.</description>
+		<state readOnly="true">
+			<options>
+				<option value="YES">Yes</option>
+				<option value="NO">No</option>
+				<option value="OPENED">Opened</option>
+				<option value="TRUNK_OPENED">Trunk opened</option>
+				<option value="UNKNOWN">Unknown</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="locked">
+		<item-type>Switch</item-type>
+		<label>Locked</label>
+		<description>Locked status of the vehicle.</description>
+		<category>Lock</category>
+		<tags>
+			<tag>Status</tag>
+			<tag>LockState</tag>
+		</tags>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="reliable-lock-status" advanced="true">
+		<item-type>String</item-type>
+		<label>Reliable Lock Status</label>
+		<description>Only reported by newer ("MOD4") vehicles.</description>
+		<state readOnly="true">
+			<options>
+				<option value="LOCKED">Locked</option>
+				<option value="UNLOCKED">Unlocked</option>
+				<option value="UNKNOWN">Unknown</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="doors">
+		<item-type>String</item-type>
+		<label>Doors</label>
+		<tags>
+			<tag>Status</tag>
+			<tag>OpenState</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="OPEN">Open</option>
+				<option value="CLOSED">Closed</option>
+				<option value="UNKNOWN">Unknown</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="windows">
+		<item-type>String</item-type>
+		<label>Windows</label>
+		<description>Aggregated over the side windows; the sunroof is reported separately.</description>
+		<tags>
+			<tag>Status</tag>
+			<tag>OpenState</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="OPEN">Open</option>
+				<option value="CLOSED">Closed</option>
+				<option value="UNKNOWN">Unknown</option>
+				<option value="UNSUPPORTED">Unsupported</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="lights">
+		<item-type>String</item-type>
+		<label>Lights</label>
+		<tags>
+			<tag>Status</tag>
+			<tag>Light</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="ON">On</option>
+				<option value="OFF">Off</option>
+				<option value="UNKNOWN">Unknown</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="sunroof" advanced="true">
+		<item-type>String</item-type>
+		<label>Sunroof</label>
+		<tags>
+			<tag>Status</tag>
+			<tag>OpenState</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="OPEN">Open</option>
+				<option value="CLOSED">Closed</option>
+				<option value="UNKNOWN">Unknown</option>
+				<option value="UNSUPPORTED">Unsupported</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="trunk" advanced="true">
+		<item-type>String</item-type>
+		<label>Trunk</label>
+		<tags>
+			<tag>Status</tag>
+			<tag>OpenState</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="OPEN">Open</option>
+				<option value="CLOSED">Closed</option>
+				<option value="UNKNOWN">Unknown</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="bonnet" advanced="true">
+		<item-type>String</item-type>
+		<label>Bonnet</label>
+		<tags>
+			<tag>Status</tag>
+			<tag>OpenState</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="OPEN">Open</option>
+				<option value="CLOSED">Closed</option>
+				<option value="UNKNOWN">Unknown</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="status-last-updated" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Status Last Updated</label>
+		<description>Timestamp when the vehicle last reported its status.</description>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+
+</thing:thing-descriptions>

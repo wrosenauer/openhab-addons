@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<bridge-type id="account">
+		<label>MyŠkoda Account</label>
+		<description>A MyŠkoda API key, generated in the MySkoda mobile app. One key can cover several vehicles.</description>
+		<semantic-equipment-tag>WebService</semantic-equipment-tag>
+
+		<config-description>
+			<parameter name="apiKey" type="text" required="true">
+				<context>password</context>
+				<label>API Key</label>
+				<description>API key generated in the MySkoda app (Settings &gt; Developer &gt; API keys). Bound to the
+					vehicles
+					selected when it was created, and shared by all vehicle things under this bridge.</description>
+			</parameter>
+		</config-description>
+	</bridge-type>
+
+</thing:thing-descriptions>

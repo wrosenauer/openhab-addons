@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="climate-values">
+		<label>Climate</label>
+		<description>Air conditioning state and window heating.</description>
+		<channels>
+			<channel id="climate-state" typeId="climate-state"/>
+			<channel id="target-temperature" typeId="target-temperature"/>
+			<channel id="estimated-reach-target-temperature-at" typeId="estimated-reach-target-temperature-at"/>
+			<channel id="without-external-power" typeId="without-external-power"/>
+			<channel id="at-unlock" typeId="at-unlock"/>
+			<channel id="window-heating-enabled" typeId="window-heating-enabled"/>
+			<channel id="window-heating-front" typeId="window-heating-side"/>
+			<channel id="window-heating-rear" typeId="window-heating-side"/>
+			<channel id="air-conditioning-switch" typeId="air-conditioning-switch"/>
+			<channel id="last-updated" typeId="climate-last-updated"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="climate-state">
+		<item-type>String</item-type>
+		<label>Air Conditioning State</label>
+		<tags>
+			<tag>Status</tag>
+			<tag>Airconditioning</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="OFF">Off</option>
+				<option value="COOLING">Cooling</option>
+				<option value="HEATING">Heating</option>
+				<option value="HEATING_AUXILIARY">Heating (auxiliary)</option>
+				<option value="VENTILATION">Ventilation</option>
+				<option value="COMPLETED">Completed</option>
+				<option value="UNKNOWN">Unknown</option>
+				<option value="UNSUPPORTED">Unsupported</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="target-temperature">
+		<item-type>Number:Temperature</item-type>
+		<label>Target Temperature</label>
+		<description>Target cabin temperature, used when starting the air conditioning.</description>
+		<category>Temperature</category>
+		<tags>
+			<tag>Setpoint</tag>
+			<tag>Temperature</tag>
+		</tags>
+		<state pattern="%.1f %unit%" min="16" max="29.5" step="0.5"/>
+	</channel-type>
+	<channel-type id="estimated-reach-target-temperature-at" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Estimated Reach of Target Temperature At</label>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+	<channel-type id="without-external-power" advanced="true">
+		<item-type>Switch</item-type>
+		<label>Air Conditioning Without External Power</label>
+		<description>Whether air conditioning may run without the vehicle being connected to external power.</description>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="at-unlock" advanced="true">
+		<item-type>Switch</item-type>
+		<label>Air Conditioning At Unlock</label>
+		<description>Whether air conditioning starts automatically when the vehicle is unlocked.</description>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="window-heating-enabled" advanced="true">
+		<item-type>Switch</item-type>
+		<label>Window Heating Enabled</label>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="window-heating-side" advanced="true">
+		<item-type>String</item-type>
+		<label>Window Heating</label>
+		<state readOnly="true">
+			<options>
+				<option value="ON">On</option>
+				<option value="OFF">Off</option>
+				<option value="UNKNOWN">Unknown</option>
+				<option value="UNSUPPORTED">Unsupported</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="air-conditioning-switch">
+		<item-type>Switch</item-type>
+		<label>Air Conditioning</label>
+		<description>Start or stop the air conditioning, using the target temperature channel.</description>
+		<tags>
+			<tag>Switch</tag>
+			<tag>Airconditioning</tag>
+		</tags>
+		<state readOnly="false"/>
+	</channel-type>
+	<channel-type id="climate-last-updated" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Climate Last Updated</label>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+
+</thing:thing-descriptions>

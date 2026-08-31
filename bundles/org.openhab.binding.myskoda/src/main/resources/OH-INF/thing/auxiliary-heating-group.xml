@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="auxiliary-heating-values">
+		<label>Auxiliary Heating</label>
+		<description>The vehicle's fuel-operated or electric auxiliary heater. Starting it requires the vehicle's
+			security PIN,
+			configured on the vehicle thing.</description>
+		<channels>
+			<channel id="auxiliary-heating-state" typeId="auxiliary-heating-state"/>
+			<channel id="start-mode" typeId="auxiliary-start-mode"/>
+			<channel id="duration" typeId="auxiliary-duration"/>
+			<channel id="auxiliary-target-temperature" typeId="target-temperature"/>
+			<channel id="auxiliary-estimated-reach-target-at" typeId="auxiliary-estimated-reach-target-at"/>
+			<channel id="auxiliary-heating-switch" typeId="auxiliary-heating-switch"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="auxiliary-heating-state">
+		<item-type>String</item-type>
+		<label>Auxiliary Heating State</label>
+		<tags>
+			<tag>Status</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="OFF">Off</option>
+				<option value="PREHEATING">Preheating</option>
+				<option value="HEATING_AUXILIARY">Heating</option>
+				<option value="VENTILATION">Ventilation</option>
+				<option value="UNKNOWN">Unknown</option>
+				<option value="UNSUPPORTED">Unsupported</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="auxiliary-start-mode" advanced="true">
+		<item-type>String</item-type>
+		<label>Auxiliary Start Mode</label>
+		<state readOnly="true">
+			<options>
+				<option value="HEATING">Heating</option>
+				<option value="VENTILATION">Ventilation</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="auxiliary-duration" advanced="true">
+		<item-type>Number:Time</item-type>
+		<label>Duration</label>
+		<description>Duration the auxiliary heating runs for when started.</description>
+		<category>Time</category>
+		<state pattern="%d %unit%" min="0" max="3600" step="60"/>
+	</channel-type>
+	<channel-type id="auxiliary-estimated-reach-target-at" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Estimated Reach of Target Temperature At</label>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+	<channel-type id="auxiliary-heating-switch">
+		<item-type>Switch</item-type>
+		<label>Auxiliary Heating</label>
+		<description>Start or stop the auxiliary heating. Requires the vehicle's security PIN to be configured on
+			the vehicle
+			thing.</description>
+		<tags>
+			<tag>Switch</tag>
+		</tags>
+		<state readOnly="false"/>
+	</channel-type>
+
+</thing:thing-descriptions>
