@@ -33,6 +33,10 @@ public class MySkodaBindingConstants {
     // Bridge properties
     public static final String PROPERTY_API_KEY_EXPIRES_AT = "apiKeyExpiresAt";
 
+    // Vehicle properties
+    public static final String PROPERTY_VEHICLE_NAME = "vehicleName";
+    public static final String PROPERTY_LICENSE_PLATE = "licensePlate";
+
     // Channel group ids
     public static final String GROUP_STATUS = "status";
     public static final String GROUP_ODOMETER = "odometer";
@@ -80,6 +84,8 @@ public class MySkodaBindingConstants {
     public static final String CHANNEL_REMAINING_RANGE = "remaining-range";
     public static final String CHANNEL_CHARGING_STATE = "charging-state";
     public static final String CHANNEL_CHARGE_TYPE = "charge-type";
+    public static final String CHANNEL_PLUG_CONNECTION_STATE = "plug-connection-state";
+    public static final String CHANNEL_PLUG_LOCK_STATE = "plug-lock-state";
     public static final String CHANNEL_CHARGE_POWER = "charge-power";
     public static final String CHANNEL_CHARGE_RATE = "charge-rate";
     public static final String CHANNEL_REMAINING_TIME = "remaining-time";

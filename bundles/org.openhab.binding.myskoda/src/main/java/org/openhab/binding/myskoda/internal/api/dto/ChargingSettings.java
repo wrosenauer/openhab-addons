@@ -12,13 +12,15 @@
  */
 package org.openhab.binding.myskoda.internal.api.dto;
 
+import java.util.List;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * The {@link ChargingSettings} dto reports the vehicle's configured charging preferences. These
- * are informational only - the public API has no endpoint to change them, so all of them surface
- * as read-only channels.
+ * The {@link ChargingSettings} dto reports the vehicle's configured charging preferences. Only the
+ * target state of charge ({@code PUT /charging/limit}) and the preferred charge mode
+ * ({@code PUT /charging/mode}) can be changed through the public API; the others are read-only.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
@@ -28,6 +30,7 @@ public class ChargingSettings {
     public @Nullable Integer targetStateOfChargeInPercent;
     public @Nullable Integer batteryCareModeTargetValueInPercent;
     public String preferredChargeMode = "";
+    public @Nullable List<String> availableChargeModes;
     public String chargingCareMode = "";
     public String autoUnlockPlugWhenCharged = "";
     public String maxChargeCurrentAc = "";

@@ -44,7 +44,7 @@
 	<channel-type id="target-temperature">
 		<item-type>Number:Temperature</item-type>
 		<label>Target Temperature</label>
-		<description>Target cabin temperature, used when starting the air conditioning.</description>
+		<description>Target cabin temperature. Sent with the next start command.</description>
 		<category>Temperature</category>
 		<tags>
 			<tag>Setpoint</tag>
@@ -61,8 +61,8 @@
 	<channel-type id="without-external-power" advanced="true">
 		<item-type>Switch</item-type>
 		<label>Air Conditioning Without External Power</label>
-		<description>Whether air conditioning may run without the vehicle being connected to external power.</description>
-		<state readOnly="true"/>
+		<description>Whether air conditioning may run without the vehicle being connected to external power. Sent with the
+			next air conditioning start.</description>
 	</channel-type>
 	<channel-type id="at-unlock" advanced="true">
 		<item-type>Switch</item-type>

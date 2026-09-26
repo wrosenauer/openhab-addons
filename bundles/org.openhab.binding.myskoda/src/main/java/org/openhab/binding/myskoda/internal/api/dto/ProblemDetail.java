@@ -13,10 +13,15 @@
 package org.openhab.binding.myskoda.internal.api.dto;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
+
+import com.google.gson.JsonElement;
 
 /**
  * The {@link ProblemDetail} dto is the RFC 9457 {@code application/problem+json} error body
- * returned by the MySkoda public API on 4xx/5xx responses.
+ * returned by the MySkoda public API on 4xx/5xx responses. When a request parameter is rejected
+ * ({@code 400}), the extension members {@code parameter}, {@code rejectedValue} and
+ * {@code allowedValues} identify what to fix.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
@@ -28,4 +33,20 @@ public class ProblemDetail {
     public int status;
     public String detail = "";
     public String instance = "";
+    public String parameter = "";
+    public @Nullable JsonElement rejectedValue;
+    public @Nullable JsonElement allowedValues;
+
+    /**
+     * @return a message describing this problem, falling back to {@code fallback} when the
+     *         problem carries neither a detail nor a title
+     */
+    public String toMessage(String fallback) {
+        String message = !detail.isBlank() ? detail : !title.isBlank() ? title : fallback;
+        JsonElement allowed = allowedValues;
+        if (!parameter.isBlank() && allowed != null) {
+            message += " (" + parameter + " must be one of " + allowed + ")";
+        }
+        return message;
+    }
 }

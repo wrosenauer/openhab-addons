@@ -12,6 +12,8 @@
  */
 package org.openhab.binding.myskoda.internal.api;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -23,6 +25,8 @@ import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Request;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpMethod;
+import org.openhab.binding.myskoda.internal.api.dto.ChargeMode;
+import org.openhab.binding.myskoda.internal.api.dto.ChargingLimit;
 import org.openhab.binding.myskoda.internal.api.dto.ProblemDetail;
 import org.openhab.binding.myskoda.internal.api.dto.StartAirConditioningConfiguration;
 import org.openhab.binding.myskoda.internal.api.dto.StartAuxiliaryHeatingConfiguration;
@@ -39,10 +43,9 @@ import com.google.gson.JsonParseException;
 
 /**
  * The {@link MySkodaApiClient} talks to the MySkoda public API
- * ({@code https://public.api.connect.skoda-auto.cz}), authenticating with the per-vehicle
+ * ({@code https://public.api.connect.skoda-auto.cz}), authenticating with the
  * {@code X-API-Key} header. One instance is owned by the account bridge and shared by all
- * vehicle things below it, so that the {@link MySkodaRateLimiter} sees every call made with that
- * key.
+ * vehicle things below it; it keeps one {@link MySkodaRateLimiter} per VIN.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
@@ -52,17 +55,20 @@ public class MySkodaApiClient {
     private static final String BASE_URL = "https://public.api.connect.skoda-auto.cz";
     private static final int REQUEST_TIMEOUT_MS = 10_000;
 
+    private static final String PROBLEM_API_KEY_EXPIRED = "/api-key-expired";
+    private static final String PROBLEM_OPERATION_NOT_AUTHORIZED = "/operation-not-authorized";
+    private static final String PROBLEM_VEHICLE_NOT_ACCEPTING_REQUESTS = "/vehicle-not-accepting-requests";
+
     private final Logger logger = LoggerFactory.getLogger(MySkodaApiClient.class);
     private final HttpClient httpClient;
-    private final MySkodaRateLimiter rateLimiter;
+    private final Map<String, MySkodaRateLimiter> rateLimiters = new ConcurrentHashMap<>();
     private final Gson gson = new Gson();
 
     private String apiKey;
     private @Nullable String apiKeyExpiresAt;
 
-    public MySkodaApiClient(HttpClient httpClient, MySkodaRateLimiter rateLimiter, String apiKey) {
+    public MySkodaApiClient(HttpClient httpClient, String apiKey) {
         this.httpClient = httpClient;
-        this.rateLimiter = rateLimiter;
         this.apiKey = apiKey;
     }
 
@@ -80,7 +86,7 @@ public class MySkodaApiClient {
 
     public VehicleResponse getVehicle(String vin)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
-        ContentResponse response = execute(HttpMethod.GET, "/api/v1/vehicles/" + vin, null);
+        ContentResponse response = execute(HttpMethod.GET, vin, "", null);
         try {
             VehicleResponse vehicleResponse = gson.fromJson(response.getContentAsString(), VehicleResponse.class);
             return vehicleResponse == null ? new VehicleResponse() : vehicleResponse;
@@ -91,12 +97,22 @@ public class MySkodaApiClient {
 
     public void startCharging(String vin)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
-        execute(HttpMethod.POST, "/api/v1/vehicles/" + vin + "/charging/start", null);
+        execute(HttpMethod.POST, vin, "/charging/start", null);
     }
 
     public void stopCharging(String vin)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
-        execute(HttpMethod.POST, "/api/v1/vehicles/" + vin + "/charging/stop", null);
+        execute(HttpMethod.POST, vin, "/charging/stop", null);
+    }
+
+    public void setChargingLimit(String vin, int targetStateOfChargeInPercent)
+            throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
+        execute(HttpMethod.PUT, vin, "/charging/limit", gson.toJson(new ChargingLimit(targetStateOfChargeInPercent)));
+    }
+
+    public void setChargeMode(String vin, String chargeMode)
+            throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
+        execute(HttpMethod.PUT, vin, "/charging/mode", gson.toJson(new ChargeMode(chargeMode)));
     }
 
     public void startAirConditioning(String vin, @Nullable TargetTemperature targetTemperature,
@@ -104,12 +120,12 @@ public class MySkodaApiClient {
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
         StartAirConditioningConfiguration body = new StartAirConditioningConfiguration(targetTemperature,
                 airConditioningWithoutExternalPower);
-        execute(HttpMethod.POST, "/api/v1/vehicles/" + vin + "/air-conditioning/start", gson.toJson(body));
+        execute(HttpMethod.POST, vin, "/air-conditioning/start", gson.toJson(body));
     }
 
     public void stopAirConditioning(String vin)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
-        execute(HttpMethod.POST, "/api/v1/vehicles/" + vin + "/air-conditioning/stop", null);
+        execute(HttpMethod.POST, vin, "/air-conditioning/stop", null);
     }
 
     public void startAuxiliaryHeating(String vin, String spin, int durationInSeconds, String startMode,
@@ -118,26 +134,32 @@ public class MySkodaApiClient {
         StartAuxiliaryHeatingConfiguration body = new StartAuxiliaryHeatingConfiguration(spin, durationInSeconds,
                 startMode);
         body.targetTemperature = targetTemperature;
-        execute(HttpMethod.POST, "/api/v1/vehicles/" + vin + "/auxiliary-heating/start", gson.toJson(body));
+        execute(HttpMethod.POST, vin, "/auxiliary-heating/start", gson.toJson(body));
     }
 
     public void stopAuxiliaryHeating(String vin)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
-        execute(HttpMethod.POST, "/api/v1/vehicles/" + vin + "/auxiliary-heating/stop", null);
+        execute(HttpMethod.POST, vin, "/auxiliary-heating/stop", null);
     }
 
     public void startActiveVentilation(String vin)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
-        execute(HttpMethod.POST, "/api/v1/vehicles/" + vin + "/active-ventilation/start", null);
+        execute(HttpMethod.POST, vin, "/active-ventilation/start", null);
     }
 
     public void stopActiveVentilation(String vin)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
-        execute(HttpMethod.POST, "/api/v1/vehicles/" + vin + "/active-ventilation/stop", null);
+        execute(HttpMethod.POST, vin, "/active-ventilation/stop", null);
     }
 
-    private ContentResponse execute(HttpMethod method, String path, @Nullable String jsonBody)
+    /**
+     * Execute a request against {@code /api/v1/vehicles/{vin}{subPath}}. The quota is tracked per VIN, as
+     * the API documentation states that requests are rate-limited per VIN.
+     */
+    private ContentResponse execute(HttpMethod method, String vin, String subPath, @Nullable String jsonBody)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
+        String path = "/api/v1/vehicles/" + vin + subPath;
+        MySkodaRateLimiter rateLimiter = rateLimiters.computeIfAbsent(vin, v -> new MySkodaRateLimiter());
         rateLimiter.checkAllowed();
 
         Request request = httpClient.newRequest(BASE_URL + path).method(method)
@@ -165,19 +187,19 @@ public class MySkodaApiClient {
             rateLimiter.onResponse(response.getHeaders());
             return response;
         }
-        if (status == 401 || status == 403) {
-            ProblemDetail problem = parseProblem(response);
-            boolean expired = problem.type.endsWith("api-key-expired");
-            throw new MySkodaAuthException(problem.detail.isBlank() ? problem.title : problem.detail, expired);
-        }
-        if (status == 429) {
-            rateLimiter.onRateLimited(response.getHeaders());
-            ProblemDetail problem = parseProblem(response);
-            throw new MySkodaRateLimitException(problem.detail.isBlank() ? problem.title : problem.detail,
-                    java.time.Instant.now().plusSeconds(3600));
-        }
         ProblemDetail problem = parseProblem(response);
-        String message = problem.detail.isBlank() ? ("HTTP " + status + " " + response.getReason()) : problem.detail;
+        String message = problem.toMessage("HTTP " + status + " " + response.getReason());
+        // 401 and 403 responses do not consume quota, but every other error response does and carries
+        // the RateLimit-* headers as well
+        if (status == 401 || (status == 403 && !problem.type.endsWith(PROBLEM_OPERATION_NOT_AUTHORIZED))) {
+            throw new MySkodaAuthException(message, problem.type.endsWith(PROBLEM_API_KEY_EXPIRED));
+        }
+        if (status == 429 && !problem.type.endsWith(PROBLEM_VEHICLE_NOT_ACCEPTING_REQUESTS)) {
+            throw new MySkodaRateLimitException(message, rateLimiter.onRateLimited(response.getHeaders()));
+        }
+        rateLimiter.onResponse(response.getHeaders());
+        // the vehicle refusing a single operation (operation-not-authorized, operation-not-supported,
+        // operation-disabled, vehicle-not-accepting-requests) is not an API key or quota problem
         logger.debug("MySkoda API request {} {} failed: {}", method, path, message);
         throw new MySkodaApiException(message);
     }

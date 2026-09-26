@@ -39,7 +39,8 @@
 	<channel-type id="auxiliary-start-mode" advanced="true">
 		<item-type>String</item-type>
 		<label>Auxiliary Start Mode</label>
-		<state readOnly="true">
+		<description>Mode the auxiliary heating starts in. Sent with the next auxiliary heating start.</description>
+		<state>
 			<options>
 				<option value="HEATING">Heating</option>
 				<option value="VENTILATION">Ventilation</option>
@@ -49,7 +50,7 @@
 	<channel-type id="auxiliary-duration" advanced="true">
 		<item-type>Number:Time</item-type>
 		<label>Duration</label>
-		<description>Duration the auxiliary heating runs for when started.</description>
+		<description>Duration the auxiliary heating runs for. Sent with the next auxiliary heating start.</description>
 		<category>Time</category>
 		<state pattern="%d %unit%" min="0" max="3600" step="60"/>
 	</channel-type>

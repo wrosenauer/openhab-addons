@@ -13,23 +13,18 @@
 package org.openhab.binding.myskoda.internal.api.dto;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * The {@link ChargingStatus} dto holds the live charging state of the vehicle.
+ * The {@link ChargingLimit} dto is the request body of {@code PUT /charging/limit}.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
 @NonNullByDefault
-public class ChargingStatus {
+public class ChargingLimit {
 
-    public @Nullable Double chargingRateInKilometersPerHour;
-    public @Nullable Double chargePowerInKw;
-    public @Nullable Integer remainingTimeToFullyChargedInMinutes;
-    public String fullyChargedAt = "";
-    public String state = "";
-    public String chargeType = "";
-    public String plugConnectionState = "";
-    public String plugLockState = "";
-    public @Nullable BatteryStatus battery;
+    public int targetStateOfChargeInPercent;
+
+    public ChargingLimit(int targetStateOfChargeInPercent) {
+        this.targetStateOfChargeInPercent = targetStateOfChargeInPercent;
+    }
 }

@@ -13,9 +13,10 @@
 			<parameter name="apiKey" type="text" required="true">
 				<context>password</context>
 				<label>API Key</label>
-				<description>API key generated in the MySkoda app (Settings &gt; Developer &gt; API keys). Bound to the
-					vehicles
-					selected when it was created, and shared by all vehicle things under this bridge.</description>
+				<description>API key created in the MyŠkoda app (open https://go.skoda.eu/api-keys on the phone with the app
+					installed). A key is bound to the vehicles selected when it was created and expires; create a new one
+					in the app
+					when it does.</description>
 			</parameter>
 		</config-description>
 	</bridge-type>

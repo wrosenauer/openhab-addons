@@ -44,10 +44,13 @@ public class MySkodaHandlerFactory extends BaseThingHandlerFactory {
     private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = Set.of(THING_TYPE_ACCOUNT, THING_TYPE_VEHICLE);
 
     private final HttpClient httpClient;
+    private final MySkodaStateDescriptionProvider stateDescriptionProvider;
 
     @Activate
-    public MySkodaHandlerFactory(final @Reference HttpClientFactory httpClientFactory) {
+    public MySkodaHandlerFactory(final @Reference HttpClientFactory httpClientFactory,
+            final @Reference MySkodaStateDescriptionProvider stateDescriptionProvider) {
         this.httpClient = httpClientFactory.getCommonHttpClient();
+        this.stateDescriptionProvider = stateDescriptionProvider;
     }
 
     @Override
@@ -62,7 +65,7 @@ public class MySkodaHandlerFactory extends BaseThingHandlerFactory {
         if (THING_TYPE_ACCOUNT.equals(thingTypeUID)) {
             return new MySkodaAccountHandler((Bridge) thing, httpClient);
         } else if (THING_TYPE_VEHICLE.equals(thingTypeUID)) {
-            return new MySkodaVehicleHandler(thing);
+            return new MySkodaVehicleHandler(thing, stateDescriptionProvider);
         }
 
         return null;

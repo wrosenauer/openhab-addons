@@ -19,6 +19,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.junit.jupiter.api.Test;
@@ -62,10 +63,13 @@ class VehicleResponseDeserializationTest {
         assertThat(vehicle.charging, notNullValue());
         assertThat(vehicle.charging.status, notNullValue());
         assertThat(vehicle.charging.status.state, is("CHARGING"));
+        assertThat(vehicle.charging.status.plugConnectionState, is("CONNECTED"));
+        assertThat(vehicle.charging.status.plugLockState, is("LOCKED"));
         assertThat(vehicle.charging.status.battery, notNullValue());
         assertThat(vehicle.charging.status.battery.stateOfChargeInPercent, is(71));
         assertThat(vehicle.charging.settings, notNullValue());
         assertThat(vehicle.charging.settings.targetStateOfChargeInPercent, is(80));
+        assertThat(vehicle.charging.settings.availableChargeModes, is(List.of("MANUAL", "TIMER")));
 
         assertThat(vehicle.airConditioning, notNullValue());
         assertThat(vehicle.airConditioning.state, is("HEATING"));

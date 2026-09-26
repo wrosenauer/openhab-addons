@@ -18,7 +18,6 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
 import org.openhab.binding.myskoda.internal.api.MySkodaApiClient;
-import org.openhab.binding.myskoda.internal.api.MySkodaRateLimiter;
 import org.openhab.binding.myskoda.internal.api.exception.MySkodaAuthException;
 import org.openhab.binding.myskoda.internal.config.MySkodaAccountConfiguration;
 import org.openhab.core.thing.Bridge;
@@ -30,9 +29,8 @@ import org.openhab.core.types.Command;
 
 /**
  * The {@link MySkodaAccountHandler} is the Bridge handler for a MySkoda API key. One key can
- * cover several vehicles, so it owns the single {@link MySkodaApiClient}/{@link MySkodaRateLimiter}
- * pair shared by all {@link MySkodaVehicleHandler}s below it - the 20 requests/hour quota is
- * tracked per key, not per vehicle.
+ * cover several vehicles, so it owns the single {@link MySkodaApiClient} shared by all
+ * {@link MySkodaVehicleHandler}s below it. The request quota is tracked per VIN inside the client.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
@@ -40,7 +38,6 @@ import org.openhab.core.types.Command;
 public class MySkodaAccountHandler extends BaseBridgeHandler {
 
     private final HttpClient httpClient;
-    private final MySkodaRateLimiter rateLimiter = new MySkodaRateLimiter();
     private @Nullable MySkodaApiClient apiClient;
 
     public MySkodaAccountHandler(Bridge bridge, HttpClient httpClient) {
@@ -56,7 +53,7 @@ public class MySkodaAccountHandler extends BaseBridgeHandler {
                     "@text/myskoda.account.no-api-key");
             return;
         }
-        apiClient = new MySkodaApiClient(httpClient, rateLimiter, config.apiKey);
+        apiClient = new MySkodaApiClient(httpClient, config.apiKey);
         updateStatus(ThingStatus.ONLINE);
     }
 

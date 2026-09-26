@@ -17,11 +17,15 @@ import static org.openhab.binding.myskoda.internal.MySkodaBindingConstants.*;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.myskoda.internal.MySkodaStateDescriptionProvider;
 import org.openhab.binding.myskoda.internal.api.MySkodaApiClient;
 import org.openhab.binding.myskoda.internal.api.dto.ActiveVentilation;
 import org.openhab.binding.myskoda.internal.api.dto.AirConditioning;
@@ -63,35 +67,44 @@ import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.RefreshType;
 import org.openhab.core.types.State;
+import org.openhab.core.types.StateOption;
 import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * The {@link MySkodaVehicleHandler} polls one vehicle's state from the MySkoda public API and
- * dispatches the small set of commands the API supports (charging, air conditioning, auxiliary
- * heating, active ventilation start/stop). Since the account bridge's quota is only 20
- * requests/hour, a command does <b>not</b> trigger an immediate re-poll - the new state is picked
- * up on the next scheduled poll instead.
+ * dispatches the commands the API supports: charging, air conditioning, auxiliary heating and
+ * active ventilation start/stop, plus the charging limit and charge mode. Since the account
+ * bridge's quota is only 20 requests/hour, a command does <b>not</b> trigger an immediate re-poll -
+ * the new state is picked up on the next scheduled poll instead.
+ * <p>
+ * Parameters the API only accepts with a start command (target temperatures, auxiliary heating
+ * duration and start mode, air conditioning without external power) are held as
+ * {@link StartParameter}s and sent with the next start.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
 @NonNullByDefault
 public class MySkodaVehicleHandler extends BaseThingHandler {
 
-    private static final String DEFAULT_START_MODE = "HEATING";
+    private static final Set<String> AUXILIARY_START_MODES = Set.of("HEATING", "VENTILATION");
 
     private final Logger logger = LoggerFactory.getLogger(MySkodaVehicleHandler.class);
+    private final MySkodaStateDescriptionProvider stateDescriptionProvider;
 
     private MySkodaVehicleConfiguration config = new MySkodaVehicleConfiguration();
     private @Nullable ScheduledFuture<?> pollingJob;
 
-    private double climateTargetTemperatureCelsius = 21.0;
-    private double auxiliaryHeatingTargetTemperatureCelsius = 21.0;
-    private int auxiliaryHeatingDurationSeconds = 600;
+    private final StartParameter<Double> climateTargetTemperatureCelsius = new StartParameter<>(21.0);
+    private final StartParameter<Boolean> airConditioningWithoutExternalPower = new StartParameter<>(true);
+    private final StartParameter<Double> auxiliaryHeatingTargetTemperatureCelsius = new StartParameter<>(21.0);
+    private final StartParameter<Integer> auxiliaryHeatingDurationSeconds = new StartParameter<>(600);
+    private final StartParameter<String> auxiliaryHeatingStartMode = new StartParameter<>("HEATING");
 
-    public MySkodaVehicleHandler(Thing thing) {
+    public MySkodaVehicleHandler(Thing thing, MySkodaStateDescriptionProvider stateDescriptionProvider) {
         super(thing);
+        this.stateDescriptionProvider = stateDescriptionProvider;
     }
 
     @Override
@@ -149,6 +162,7 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
                 return;
             }
             updateStatus(ThingStatus.ONLINE);
+            updateVehicleProperties(vehicle);
             updateStatusGroup(vehicle.status);
             updateOdometerGroup(vehicle.odometer);
             updateFuelGroup(vehicle.fuelStatus);
@@ -168,6 +182,15 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private void updateVehicleProperties(Vehicle vehicle) {
+        if (!vehicle.name.isBlank()) {
+            updateProperty(PROPERTY_VEHICLE_NAME, vehicle.name);
+        }
+        if (!vehicle.licensePlate.isBlank()) {
+            updateProperty(PROPERTY_LICENSE_PLATE, vehicle.licensePlate);
         }
     }
 
@@ -256,6 +279,9 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         if (status != null) {
             updateState(channel(GROUP_CHARGING, CHANNEL_CHARGING_STATE), stringOrUndef(status.state));
             updateState(channel(GROUP_CHARGING, CHANNEL_CHARGE_TYPE), stringOrUndef(status.chargeType));
+            updateState(channel(GROUP_CHARGING, CHANNEL_PLUG_CONNECTION_STATE),
+                    stringOrUndef(status.plugConnectionState));
+            updateState(channel(GROUP_CHARGING, CHANNEL_PLUG_LOCK_STATE), stringOrUndef(status.plugLockState));
             updateState(channel(GROUP_CHARGING, CHANNEL_CHARGE_POWER), powerOrUndef(status.chargePowerInKw));
             updateState(channel(GROUP_CHARGING, CHANNEL_CHARGE_RATE),
                     speedKmhOrUndef(status.chargingRateInKilometersPerHour));
@@ -289,6 +315,11 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
                             : settings.batteryCareModeTargetValueInPercent.doubleValue()));
             updateState(channel(GROUP_CHARGING, CHANNEL_PREFERRED_CHARGE_MODE),
                     stringOrUndef(settings.preferredChargeMode));
+            List<String> availableChargeModes = settings.availableChargeModes;
+            if (availableChargeModes != null && !availableChargeModes.isEmpty()) {
+                stateDescriptionProvider.setStateOptions(channel(GROUP_CHARGING, CHANNEL_PREFERRED_CHARGE_MODE),
+                        availableChargeModes.stream().map(mode -> new StateOption(mode, optionLabel(mode))).toList());
+            }
             updateState(channel(GROUP_CHARGING, CHANNEL_CHARGING_CARE_MODE), stringOrUndef(settings.chargingCareMode));
             updateState(channel(GROUP_CHARGING, CHANNEL_AUTO_UNLOCK_PLUG),
                     stringOrUndef(settings.autoUnlockPlugWhenCharged));
@@ -308,14 +339,18 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         updateState(channel(GROUP_CLIMATE, CHANNEL_CLIMATE_STATE), stringOrUndef(airConditioning.state));
         TargetTemperature targetTemperature = airConditioning.targetTemperature;
         if (targetTemperature != null) {
-            climateTargetTemperatureCelsius = celsiusValue(targetTemperature);
             updateState(channel(GROUP_CLIMATE, CHANNEL_TARGET_TEMPERATURE),
-                    new QuantityType<>(climateTargetTemperatureCelsius, SIUnits.CELSIUS));
+                    new QuantityType<>(
+                            climateTargetTemperatureCelsius.updateFromVehicle(celsiusValue(targetTemperature)),
+                            SIUnits.CELSIUS));
         }
         updateState(channel(GROUP_CLIMATE, CHANNEL_ESTIMATED_REACH_TARGET_TEMPERATURE_AT),
                 dateTimeOrUndef(airConditioning.estimatedReachOfTargetTemperatureAt));
-        updateState(channel(GROUP_CLIMATE, CHANNEL_WITHOUT_EXTERNAL_POWER),
-                booleanOrUndef(airConditioning.airConditioningWithoutExternalPower));
+        Boolean withoutExternalPower = airConditioning.airConditioningWithoutExternalPower;
+        if (withoutExternalPower != null) {
+            updateState(channel(GROUP_CLIMATE, CHANNEL_WITHOUT_EXTERNAL_POWER),
+                    OnOffType.from(airConditioningWithoutExternalPower.updateFromVehicle(withoutExternalPower)));
+        }
         updateState(channel(GROUP_CLIMATE, CHANNEL_AT_UNLOCK), booleanOrUndef(airConditioning.airConditioningAtUnlock));
         if (airConditioning.windowHeating != null) {
             updateState(channel(GROUP_CLIMATE, CHANNEL_WINDOW_HEATING_ENABLED),
@@ -340,18 +375,21 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         }
         updateState(channel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_HEATING_STATE),
                 stringOrUndef(auxiliaryHeating.state));
-        updateState(channel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_START_MODE),
-                stringOrUndef(auxiliaryHeating.startMode));
-        if (auxiliaryHeating.durationInSeconds != null) {
-            auxiliaryHeatingDurationSeconds = auxiliaryHeating.durationInSeconds;
-            updateState(channel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_DURATION),
-                    new QuantityType<>(auxiliaryHeatingDurationSeconds, Units.SECOND));
+        if (!auxiliaryHeating.startMode.isBlank()) {
+            updateState(channel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_START_MODE),
+                    new StringType(auxiliaryHeatingStartMode.updateFromVehicle(auxiliaryHeating.startMode)));
+        }
+        Integer durationInSeconds = auxiliaryHeating.durationInSeconds;
+        if (durationInSeconds != null) {
+            updateState(channel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_DURATION), new QuantityType<>(
+                    auxiliaryHeatingDurationSeconds.updateFromVehicle(durationInSeconds), Units.SECOND));
         }
         TargetTemperature targetTemperature = auxiliaryHeating.targetTemperature;
         if (targetTemperature != null) {
-            auxiliaryHeatingTargetTemperatureCelsius = celsiusValue(targetTemperature);
             updateState(channel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_TARGET_TEMPERATURE),
-                    new QuantityType<>(auxiliaryHeatingTargetTemperatureCelsius, SIUnits.CELSIUS));
+                    new QuantityType<>(
+                            auxiliaryHeatingTargetTemperatureCelsius.updateFromVehicle(celsiusValue(targetTemperature)),
+                            SIUnits.CELSIUS));
         }
         updateState(channel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_ESTIMATED_REACH_TARGET_AT),
                 dateTimeOrUndef(auxiliaryHeating.estimatedReachOfTargetTemperatureAt));
@@ -406,34 +444,62 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
                         apiClient.stopCharging(config.vin);
                     }
                     break;
+                case CHANNEL_TARGET_STATE_OF_CHARGE:
+                    Integer targetStateOfCharge = percentValue(command);
+                    if (targetStateOfCharge != null) {
+                        apiClient.setChargingLimit(config.vin, targetStateOfCharge);
+                    }
+                    break;
+                case CHANNEL_PREFERRED_CHARGE_MODE:
+                    if (command instanceof StringType) {
+                        apiClient.setChargeMode(config.vin, command.toString());
+                    }
+                    break;
                 case CHANNEL_TARGET_TEMPERATURE:
-                    climateTargetTemperatureCelsius = celsiusValue(command, climateTargetTemperatureCelsius);
-                    updateState(channelUID, new QuantityType<>(climateTargetTemperatureCelsius, SIUnits.CELSIUS));
+                    climateTargetTemperatureCelsius.set(celsiusValue(command, climateTargetTemperatureCelsius.get()));
+                    updateState(channelUID, new QuantityType<>(climateTargetTemperatureCelsius.get(), SIUnits.CELSIUS));
+                    break;
+                case CHANNEL_WITHOUT_EXTERNAL_POWER:
+                    if (command instanceof OnOffType onOff) {
+                        airConditioningWithoutExternalPower.set(onOff == OnOffType.ON);
+                    }
                     break;
                 case CHANNEL_AIR_CONDITIONING:
                     if (command == OnOffType.ON) {
                         apiClient.startAirConditioning(config.vin,
-                                new TargetTemperature(climateTargetTemperatureCelsius, "CELSIUS"), true);
+                                new TargetTemperature(climateTargetTemperatureCelsius.get(), "CELSIUS"),
+                                airConditioningWithoutExternalPower.get());
+                        climateTargetTemperatureCelsius.sent();
+                        airConditioningWithoutExternalPower.sent();
                     } else if (command == OnOffType.OFF) {
                         apiClient.stopAirConditioning(config.vin);
                     }
                     break;
                 case CHANNEL_AUXILIARY_TARGET_TEMPERATURE:
-                    auxiliaryHeatingTargetTemperatureCelsius = celsiusValue(command,
-                            auxiliaryHeatingTargetTemperatureCelsius);
+                    auxiliaryHeatingTargetTemperatureCelsius
+                            .set(celsiusValue(command, auxiliaryHeatingTargetTemperatureCelsius.get()));
                     updateState(channelUID,
-                            new QuantityType<>(auxiliaryHeatingTargetTemperatureCelsius, SIUnits.CELSIUS));
+                            new QuantityType<>(auxiliaryHeatingTargetTemperatureCelsius.get(), SIUnits.CELSIUS));
                     break;
                 case CHANNEL_AUXILIARY_DURATION:
                     if (command instanceof QuantityType<?> quantity) {
                         QuantityType<?> seconds = quantity.toUnit(Units.SECOND);
                         if (seconds != null) {
-                            auxiliaryHeatingDurationSeconds = seconds.intValue();
+                            auxiliaryHeatingDurationSeconds.set(seconds.intValue());
                         }
                     } else if (command instanceof DecimalType decimal) {
-                        auxiliaryHeatingDurationSeconds = decimal.intValue();
+                        auxiliaryHeatingDurationSeconds.set(decimal.intValue());
                     }
-                    updateState(channelUID, new QuantityType<>(auxiliaryHeatingDurationSeconds, Units.SECOND));
+                    updateState(channelUID, new QuantityType<>(auxiliaryHeatingDurationSeconds.get(), Units.SECOND));
+                    break;
+                case CHANNEL_AUXILIARY_START_MODE:
+                    if (command instanceof StringType && AUXILIARY_START_MODES.contains(command.toString())) {
+                        auxiliaryHeatingStartMode.set(command.toString());
+                    } else {
+                        logger.warn("Invalid auxiliary heating start mode '{}', expected one of {}", command,
+                                AUXILIARY_START_MODES);
+                        updateState(channelUID, new StringType(auxiliaryHeatingStartMode.get()));
+                    }
                     break;
                 case CHANNEL_AUXILIARY_HEATING:
                     if (command == OnOffType.ON) {
@@ -441,11 +507,15 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
                             logger.warn(
                                     "Cannot start auxiliary heating for {}: no S-PIN configured on the vehicle thing",
                                     config.vin);
+                            updateState(channelUID, OnOffType.OFF);
                             break;
                         }
-                        apiClient.startAuxiliaryHeating(config.vin, config.sPin, auxiliaryHeatingDurationSeconds,
-                                DEFAULT_START_MODE,
-                                new TargetTemperature(auxiliaryHeatingTargetTemperatureCelsius, "CELSIUS"));
+                        apiClient.startAuxiliaryHeating(config.vin, config.sPin, auxiliaryHeatingDurationSeconds.get(),
+                                auxiliaryHeatingStartMode.get(),
+                                new TargetTemperature(auxiliaryHeatingTargetTemperatureCelsius.get(), "CELSIUS"));
+                        auxiliaryHeatingDurationSeconds.sent();
+                        auxiliaryHeatingStartMode.sent();
+                        auxiliaryHeatingTargetTemperatureCelsius.sent();
                     } else if (command == OnOffType.OFF) {
                         apiClient.stopAuxiliaryHeating(config.vin);
                     }
@@ -464,8 +534,13 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         } catch (MySkodaAuthException e) {
             accountHandler.reportAuthError(e);
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
+        } catch (MySkodaRateLimitException e) {
+            logger.warn("Cannot send command {} to {} for vehicle {}: {}", command, channelUID, config.vin,
+                    e.getMessage());
         } catch (MySkodaApiException e) {
-            logger.warn("Error sending command {} to {} for vehicle {}", command, channelUID, config.vin, e);
+            logger.warn("Error sending command {} to {} for vehicle {}: {}", command, channelUID, config.vin,
+                    e.getMessage());
+            logger.debug("Command failure details", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -491,6 +566,25 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             return decimal.doubleValue();
         }
         return fallback;
+    }
+
+    private static @Nullable Integer percentValue(Command command) {
+        if (command instanceof QuantityType<?> quantity) {
+            QuantityType<?> percent = quantity.toUnit(Units.PERCENT);
+            return percent == null ? null : (int) Math.round(percent.doubleValue());
+        } else if (command instanceof DecimalType decimal) {
+            return (int) Math.round(decimal.doubleValue());
+        }
+        return null;
+    }
+
+    /**
+     * Turn an API enum value such as {@code TIMER_CHARGING_WITH_CLIMATISATION} into a label
+     * ("Timer charging with climatisation"), matching the labels of the static channel options.
+     */
+    private static String optionLabel(String value) {
+        String words = value.replace('_', ' ').toLowerCase(Locale.ROOT);
+        return words.isEmpty() ? words : Character.toUpperCase(words.charAt(0)) + words.substring(1);
     }
 
     private static State stringOrUndef(String value) {

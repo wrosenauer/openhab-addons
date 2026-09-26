@@ -41,6 +41,8 @@
         "fullyChargedAt": "2026-06-01T14:00:00Z",
         "state": "CHARGING",
         "chargeType": "DC",
+        "plugConnectionState": "CONNECTED",
+        "plugLockState": "LOCKED",
         "battery": {
           "remainingCruisingRangeInMeters": 249000,
           "stateOfChargeInPercent": 71
@@ -50,6 +52,7 @@
         "targetStateOfChargeInPercent": 80,
         "batteryCareModeTargetValueInPercent": 80,
         "preferredChargeMode": "MANUAL",
+        "availableChargeModes": ["MANUAL", "TIMER"],
         "chargingCareMode": "ACTIVATED",
         "autoUnlockPlugWhenCharged": "PERMANENT",
         "maxChargeCurrentAc": "MAXIMUM",

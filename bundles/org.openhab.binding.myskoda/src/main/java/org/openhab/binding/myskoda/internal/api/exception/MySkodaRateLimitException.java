@@ -17,8 +17,8 @@ import java.time.Instant;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * The {@link MySkodaRateLimitException} is thrown when the shared 20 requests/hour quota for an
- * API key has been exhausted, either because the local
+ * The {@link MySkodaRateLimitException} is thrown when the request quota for a vehicle has been
+ * exhausted, either because the local
  * {@link org.openhab.binding.myskoda.internal.api.MySkodaRateLimiter}
  * pre-emptively blocked the call, or because the backend responded with HTTP 429.
  *

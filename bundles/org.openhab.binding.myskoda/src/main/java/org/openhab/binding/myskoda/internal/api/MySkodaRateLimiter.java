@@ -22,11 +22,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link MySkodaRateLimiter} tracks the shared 20 requests/hour quota of a MySkoda API key,
- * based on the {@code RateLimit-Remaining}/{@code RateLimit-Reset} response headers, and blocks
- * further calls locally once the backend reports {@code 429 Too Many Requests} rather than
- * repeatedly hitting the backend. One instance is shared by an account bridge and all vehicle
- * things below it, since the quota itself is shared per API key.
+ * The {@link MySkodaRateLimiter} tracks the request quota of one vehicle (currently 20
+ * requests/hour per VIN), based on the {@code RateLimit-Remaining}/{@code RateLimit-Reset} response
+ * headers, and blocks further calls locally once the quota is exhausted or the backend reports
+ * {@code 429 Too Many Requests}, rather than repeatedly hitting the backend. The
+ * {@link MySkodaApiClient} keeps one instance per VIN.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
@@ -69,8 +69,10 @@ public class MySkodaRateLimiter {
     /**
      * Record a {@code 429 Too Many Requests} response and block further calls until the
      * {@code Retry-After} it carries has elapsed.
+     *
+     * @return the instant until which further calls are blocked
      */
-    public synchronized void onRateLimited(HttpFields headers) {
+    public synchronized Instant onRateLimited(HttpFields headers) {
         String retryAfterHeader = headers.get("Retry-After");
         Instant until = Instant.now().plusSeconds(3600);
         if (retryAfterHeader != null) {
@@ -82,5 +84,6 @@ public class MySkodaRateLimiter {
         }
         blockedUntil = until;
         logger.warn("MySkoda API rate limit exceeded, blocked until {}", until);
+        return until;
     }
 }

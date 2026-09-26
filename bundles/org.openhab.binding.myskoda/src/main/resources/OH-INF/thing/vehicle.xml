@@ -33,11 +33,10 @@
 			</parameter>
 			<parameter name="refreshInterval" type="integer" unit="min" min="1">
 				<label>Refresh Interval</label>
-				<description>Interval the vehicle is polled in minutes. The MySkoda API key has a shared budget of
-					only 20
-					requests/hour across all vehicles that use it, so keep this conservative - especially
-					when several vehicles share
-					one API key.</description>
+				<description>Interval the vehicle is polled in minutes. The API allows only 20 requests/hour per vehicle,
+					and every
+					poll
+					and every command counts against that, so keep this conservative.</description>
 				<default>15</default>
 			</parameter>
 			<parameter name="sPin" type="text">
