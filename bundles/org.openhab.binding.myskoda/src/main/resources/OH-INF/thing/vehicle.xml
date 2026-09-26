@@ -24,6 +24,7 @@
 			<channel-group id="climate" typeId="climate-values"/>
 			<channel-group id="auxiliaryHeating" typeId="auxiliary-heating-values"/>
 			<channel-group id="activeVentilation" typeId="active-ventilation-values"/>
+			<channel-group id="chargingProfile" typeId="charging-profile-values"/>
 		</channel-groups>
 
 		<config-description>
@@ -43,6 +44,12 @@
 				<context>password</context>
 				<label>Security PIN</label>
 				<description>Vehicle security PIN (S-PIN), required only to start auxiliary heating.</description>
+				<advanced>true</advanced>
+			</parameter>
+			<parameter name="chargingProfile" type="text">
+				<label>Charging Profile</label>
+				<description>Name or id of the charging profile (saved charging location) shown in the Charging Profile group. Leave
+					empty to show the profile of the location the vehicle is currently at.</description>
 				<advanced>true</advanced>
 			</parameter>
 		</config-description>

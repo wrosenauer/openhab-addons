@@ -60,6 +60,40 @@
       },
       "carCapturedTimestamp": "2026-06-01T12:00:00Z"
     },
+    "chargingProfiles": {
+      "profiles": [
+        {
+          "id": 123456,
+          "name": "HOME",
+          "settings": {
+            "maxChargingCurrent": "MAXIMUM",
+            "minBatteryStateOfCharge": { "enabled": true, "minimumBatteryStateOfChargeInPercent": 30 },
+            "targetStateOfChargeInPercent": 80,
+            "autoUnlockPlugWhenCharged": "PERMANENT"
+          },
+          "preferredChargingTimes": [
+            { "id": 1, "enabled": true, "startTime": "22:00", "endTime": "06:00" }
+          ],
+          "timers": [
+            { "id": 1, "enabled": true, "time": "07:00", "type": "RECURRING", "recurringOn": ["MONDAY", "FRIDAY"] }
+          ]
+        },
+        {
+          "id": 654321,
+          "name": "Work",
+          "settings": { "targetStateOfChargeInPercent": 60 },
+          "preferredChargingTimes": [],
+          "timers": []
+        }
+      ],
+      "currentVehiclePositionProfile": {
+        "id": 123456,
+        "name": "HOME",
+        "targetStateOfChargeInPercent": 80,
+        "nextChargingTime": "22:00"
+      },
+      "carCapturedTimestamp": "2026-06-01T12:00:00Z"
+    },
     "airConditioning": {
       "state": "HEATING",
       "targetTemperature": {

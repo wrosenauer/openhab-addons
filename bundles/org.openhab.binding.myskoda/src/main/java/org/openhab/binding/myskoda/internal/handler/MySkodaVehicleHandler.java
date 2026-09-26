@@ -31,11 +31,16 @@ import org.openhab.binding.myskoda.internal.api.dto.ActiveVentilation;
 import org.openhab.binding.myskoda.internal.api.dto.AirConditioning;
 import org.openhab.binding.myskoda.internal.api.dto.AuxiliaryHeating;
 import org.openhab.binding.myskoda.internal.api.dto.Charging;
+import org.openhab.binding.myskoda.internal.api.dto.ChargingProfile;
+import org.openhab.binding.myskoda.internal.api.dto.ChargingProfileSettings;
+import org.openhab.binding.myskoda.internal.api.dto.ChargingProfiles;
 import org.openhab.binding.myskoda.internal.api.dto.ChargingSettings;
 import org.openhab.binding.myskoda.internal.api.dto.ChargingStatus;
+import org.openhab.binding.myskoda.internal.api.dto.CurrentVehiclePositionProfile;
 import org.openhab.binding.myskoda.internal.api.dto.EngineRange;
 import org.openhab.binding.myskoda.internal.api.dto.FuelStatus;
 import org.openhab.binding.myskoda.internal.api.dto.GpsCoordinates;
+import org.openhab.binding.myskoda.internal.api.dto.MinBatteryStateOfCharge;
 import org.openhab.binding.myskoda.internal.api.dto.Odometer;
 import org.openhab.binding.myskoda.internal.api.dto.OverallVehicleStatus;
 import org.openhab.binding.myskoda.internal.api.dto.ParkingPosition;
@@ -72,6 +77,10 @@ import org.openhab.core.types.UnDefType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+
 /**
  * The {@link MySkodaVehicleHandler} polls one vehicle's state from the MySkoda public API and
  * dispatches the commands the API supports: charging, air conditioning, auxiliary heating and
@@ -101,6 +110,10 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
     private final StartParameter<Double> auxiliaryHeatingTargetTemperatureCelsius = new StartParameter<>(21.0);
     private final StartParameter<Integer> auxiliaryHeatingDurationSeconds = new StartParameter<>(600);
     private final StartParameter<String> auxiliaryHeatingStartMode = new StartParameter<>("HEATING");
+
+    // the raw charging profile shown in the chargingProfile group, guarded by chargingProfileLock
+    private final Object chargingProfileLock = new Object();
+    private @Nullable JsonObject chargingProfile;
 
     public MySkodaVehicleHandler(Thing thing, MySkodaStateDescriptionProvider stateDescriptionProvider) {
         super(thing);
@@ -171,6 +184,7 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             updateClimateGroup(vehicle.airConditioning);
             updateAuxiliaryHeatingGroup(vehicle.auxiliaryHeating);
             updateActiveVentilationGroup(vehicle.activeVentilation);
+            updateChargingProfileGroup(vehicle.chargingProfiles);
         } catch (MySkodaAuthException e) {
             accountHandler.reportAuthError(e);
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
@@ -291,8 +305,7 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             updateState(channel(GROUP_CHARGING, CHANNEL_CHARGING), OnOffType.from("CHARGING".equals(status.state)));
             if (status.battery != null) {
                 updateState(channel(GROUP_CHARGING, CHANNEL_STATE_OF_CHARGE),
-                        percentOrUndef(status.battery.stateOfChargeInPercent == null ? null
-                                : status.battery.stateOfChargeInPercent.doubleValue()));
+                        percentOrUndef(status.battery.stateOfChargeInPercent));
                 Integer rangeInMeters = status.battery.remainingCruisingRangeInMeters;
                 State remainingRangeState = UnDefType.UNDEF;
                 if (rangeInMeters != null) {
@@ -308,11 +321,9 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         ChargingSettings settings = charging.settings;
         if (settings != null) {
             updateState(channel(GROUP_CHARGING, CHANNEL_TARGET_STATE_OF_CHARGE),
-                    percentOrUndef(settings.targetStateOfChargeInPercent == null ? null
-                            : settings.targetStateOfChargeInPercent.doubleValue()));
+                    percentOrUndef(settings.targetStateOfChargeInPercent));
             updateState(channel(GROUP_CHARGING, CHANNEL_BATTERY_CARE_MODE_TARGET),
-                    percentOrUndef(settings.batteryCareModeTargetValueInPercent == null ? null
-                            : settings.batteryCareModeTargetValueInPercent.doubleValue()));
+                    percentOrUndef(settings.batteryCareModeTargetValueInPercent));
             updateState(channel(GROUP_CHARGING, CHANNEL_PREFERRED_CHARGE_MODE),
                     stringOrUndef(settings.preferredChargeMode));
             List<String> availableChargeModes = settings.availableChargeModes;
@@ -418,6 +429,110 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         updateState(channel(GROUP_ACTIVE_VENTILATION, CHANNEL_ACTIVE_VENTILATION), OnOffType.from(active));
     }
 
+    private void updateChargingProfileGroup(@Nullable ChargingProfiles profiles) {
+        if (profiles == null) {
+            return;
+        }
+        JsonObject raw = ChargingProfileSupport.select(profiles, config.chargingProfile);
+        synchronized (chargingProfileLock) {
+            chargingProfile = raw;
+        }
+        ChargingProfile profile = raw == null ? null : ChargingProfileSupport.parse(raw);
+        CurrentVehiclePositionProfile current = profiles.currentVehiclePositionProfile;
+        boolean atLocation = profile != null && current != null && current.id == profile.id;
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_AT_PROFILE_LOCATION), OnOffType.from(atLocation));
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_NEXT_CHARGING_TIME),
+                atLocation ? stringOrUndef(current.nextChargingTime) : UnDefType.UNDEF);
+        updateChargingProfileChannels(profile);
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_LAST_UPDATED),
+                dateTimeOrUndef(profiles.carCapturedTimestamp));
+    }
+
+    private void updateChargingProfileChannels(@Nullable ChargingProfile profile) {
+        ChargingProfileSettings settings = profile == null ? null : profile.settings;
+        MinBatteryStateOfCharge minStateOfCharge = settings == null ? null : settings.minBatteryStateOfCharge;
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_PROFILE_NAME),
+                profile == null ? UnDefType.UNDEF : stringOrUndef(profile.name));
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_TARGET_STATE_OF_CHARGE),
+                settings == null ? UnDefType.UNDEF : percentOrUndef(settings.targetStateOfChargeInPercent));
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_MAX_CHARGE_CURRENT),
+                settings == null ? UnDefType.UNDEF : stringOrUndef(settings.maxChargingCurrent));
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_AUTO_UNLOCK_PLUG),
+                settings == null ? UnDefType.UNDEF : stringOrUndef(settings.autoUnlockPlugWhenCharged));
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_MIN_STATE_OF_CHARGE_ENABLED),
+                minStateOfCharge == null ? UnDefType.UNDEF : booleanOrUndef(minStateOfCharge.enabled));
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_MIN_STATE_OF_CHARGE),
+                minStateOfCharge == null ? UnDefType.UNDEF
+                        : percentOrUndef(minStateOfCharge.minimumBatteryStateOfChargeInPercent));
+    }
+
+    /**
+     * Change one setting of the shown charging profile. The API replaces a profile as a whole, so
+     * the complete profile from the last poll is sent with only that setting changed, and kept as
+     * the current profile until the next poll reports the vehicle's state.
+     */
+    private void handleChargingProfileCommand(MySkodaApiClient apiClient, ChannelUID channelUID, Command command)
+            throws MySkodaApiException, InterruptedException {
+        JsonElement value;
+        String[] path;
+        switch (channelUID.getIdWithoutGroup()) {
+            case CHANNEL_TARGET_STATE_OF_CHARGE:
+                Integer targetStateOfCharge = percentValue(command);
+                if (targetStateOfCharge == null) {
+                    return;
+                }
+                value = new JsonPrimitive(targetStateOfCharge);
+                path = new String[] { "targetStateOfChargeInPercent" };
+                break;
+            case CHANNEL_MAX_CHARGE_CURRENT:
+                if (!(command instanceof StringType)) {
+                    return;
+                }
+                value = new JsonPrimitive(command.toString());
+                path = new String[] { "maxChargingCurrent" };
+                break;
+            case CHANNEL_AUTO_UNLOCK_PLUG:
+                if (!(command instanceof StringType)) {
+                    return;
+                }
+                value = new JsonPrimitive(command.toString());
+                path = new String[] { "autoUnlockPlugWhenCharged" };
+                break;
+            case CHANNEL_MIN_STATE_OF_CHARGE_ENABLED:
+                if (!(command instanceof OnOffType onOff)) {
+                    return;
+                }
+                value = new JsonPrimitive(onOff == OnOffType.ON);
+                path = new String[] { "minBatteryStateOfCharge", "enabled" };
+                break;
+            case CHANNEL_MIN_STATE_OF_CHARGE:
+                Integer minStateOfCharge = percentValue(command);
+                if (minStateOfCharge == null) {
+                    return;
+                }
+                value = new JsonPrimitive(minStateOfCharge);
+                path = new String[] { "minBatteryStateOfCharge", "minimumBatteryStateOfChargeInPercent" };
+                break;
+            default:
+                logger.debug("Channel {} does not accept commands", channelUID);
+                return;
+        }
+        synchronized (chargingProfileLock) {
+            JsonObject profile = chargingProfile;
+            ChargingProfile parsed = profile == null ? null : ChargingProfileSupport.parse(profile);
+            if (profile == null || parsed == null) {
+                logger.warn("Cannot change charging profile of vehicle {}: {}", config.vin,
+                        config.chargingProfile.isBlank() ? "the vehicle is not at a saved charging location"
+                                : "no charging profile '" + config.chargingProfile + "' found");
+                updateChargingProfileChannels(null);
+                return;
+            }
+            JsonObject updated = ChargingProfileSupport.withSetting(profile, value, path);
+            apiClient.updateChargingProfile(config.vin, parsed.id, updated);
+            chargingProfile = updated;
+        }
+    }
+
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
         if (command instanceof RefreshType) {
@@ -436,6 +551,10 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             return;
         }
         try {
+            if (GROUP_CHARGING_PROFILE.equals(channelUID.getGroupId())) {
+                handleChargingProfileCommand(apiClient, channelUID, command);
+                return;
+            }
             switch (channelUID.getIdWithoutGroup()) {
                 case CHANNEL_CHARGING:
                     if (command == OnOffType.ON) {
@@ -595,7 +714,7 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         return value == null ? UnDefType.UNDEF : OnOffType.from(value);
     }
 
-    private static State percentOrUndef(@Nullable Double value) {
+    private static State percentOrUndef(@Nullable Number value) {
         return value == null ? UnDefType.UNDEF : new QuantityType<>(value, Units.PERCENT);
     }
 

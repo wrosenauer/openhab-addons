@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="myskoda"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<channel-group-type id="charging-profile-values">
+		<label>Charging Profile</label>
+		<description>One charging profile (saved charging location) of the vehicle - by default the one of the location the
+			vehicle is currently at, or the profile configured on the vehicle thing. Changing a setting sends the complete
+			profile to the vehicle; timers and preferred charging times are kept unchanged.</description>
+		<channels>
+			<channel id="name" typeId="profile-name"/>
+			<channel id="at-location" typeId="at-profile-location"/>
+			<channel id="next-charging-time" typeId="next-charging-time"/>
+			<channel id="target-state-of-charge" typeId="profile-target-state-of-charge"/>
+			<channel id="max-charge-current" typeId="profile-max-charge-current"/>
+			<channel id="auto-unlock-plug" typeId="profile-auto-unlock-plug"/>
+			<channel id="min-state-of-charge-enabled" typeId="min-state-of-charge-enabled"/>
+			<channel id="min-state-of-charge" typeId="min-state-of-charge"/>
+			<channel id="last-updated" typeId="charging-profile-last-updated"/>
+		</channels>
+	</channel-group-type>
+
+	<channel-type id="profile-name">
+		<item-type>String</item-type>
+		<label>Profile Name</label>
+		<description>Name of the charging profile, as set in the MyŠkoda app.</description>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="at-profile-location">
+		<item-type>Switch</item-type>
+		<label>At Profile Location</label>
+		<description>Whether the vehicle is at the location of this charging profile.</description>
+		<tags>
+			<tag>Status</tag>
+			<tag>Presence</tag>
+		</tags>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="next-charging-time" advanced="true">
+		<item-type>String</item-type>
+		<label>Next Charging Time</label>
+		<description>Next time (HH:mm, vehicle local time) charging is triggered by this profile. Only reported while the
+			vehicle is at the profile's location.</description>
+		<category>Time</category>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="profile-target-state-of-charge">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Profile Target State of Charge</label>
+		<description>Target state of charge of this charging profile.</description>
+		<category>Battery</category>
+		<tags>
+			<tag>Setpoint</tag>
+			<tag>Energy</tag>
+		</tags>
+		<state pattern="%.0f %unit%" min="50" max="100" step="10"/>
+	</channel-type>
+	<channel-type id="profile-max-charge-current" advanced="true">
+		<item-type>String</item-type>
+		<label>Profile Max AC Charge Current</label>
+		<description>Charge current used when charging starts at this profile's location.</description>
+		<state>
+			<options>
+				<option value="REDUCED">Reduced</option>
+				<option value="MAXIMUM">Maximum</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="profile-auto-unlock-plug" advanced="true">
+		<item-type>String</item-type>
+		<label>Profile Auto Unlock Plug When Charged</label>
+		<state>
+			<options>
+				<option value="PERMANENT">Permanent</option>
+				<option value="OFF">Off</option>
+			</options>
+		</state>
+	</channel-type>
+	<channel-type id="min-state-of-charge-enabled" advanced="true">
+		<item-type>Switch</item-type>
+		<label>Minimum State of Charge Enabled</label>
+		<description>Charge immediately, regardless of the profile's timers, while the battery is below the minimum state of
+			charge.</description>
+	</channel-type>
+	<channel-type id="min-state-of-charge" advanced="true">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Minimum State of Charge</label>
+		<description>Battery level below which charging starts immediately, if enabled.</description>
+		<category>Battery</category>
+		<state pattern="%.0f %unit%" min="0" max="100"/>
+	</channel-type>
+	<channel-type id="charging-profile-last-updated" advanced="true">
+		<item-type>DateTime</item-type>
+		<label>Charging Profiles Last Updated</label>
+		<category>Time</category>
+		<state pattern="%1$tH:%1$tM %1$td.%1$tm.%1$tY" readOnly="true"/>
+	</channel-type>
+
+</thing:thing-descriptions>

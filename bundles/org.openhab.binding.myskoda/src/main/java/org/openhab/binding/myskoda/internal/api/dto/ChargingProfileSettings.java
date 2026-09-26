@@ -10,21 +10,21 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.myskoda.internal.config;
+package org.openhab.binding.myskoda.internal.api.dto;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * The {@link MySkodaVehicleConfiguration} class contains fields mapping the vehicle thing
- * configuration parameters.
+ * The {@link ChargingProfileSettings} dto holds the settings of a charging profile.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
 @NonNullByDefault
-public class MySkodaVehicleConfiguration {
+public class ChargingProfileSettings {
 
-    public String vin = "";
-    public int refreshInterval = 15;
-    public String sPin = "";
-    public String chargingProfile = "";
+    public String maxChargingCurrent = "";
+    public @Nullable MinBatteryStateOfCharge minBatteryStateOfCharge;
+    public @Nullable Integer targetStateOfChargeInPercent;
+    public String autoUnlockPlugWhenCharged = "";
 }

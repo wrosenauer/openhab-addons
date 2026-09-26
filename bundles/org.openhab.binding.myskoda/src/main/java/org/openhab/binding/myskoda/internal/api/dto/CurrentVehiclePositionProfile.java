@@ -16,24 +16,16 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * The {@link Vehicle} dto describes a vehicle and its current state.
+ * The {@link CurrentVehiclePositionProfile} dto identifies the charging profile whose location
+ * the vehicle is currently at. Only reported when the vehicle is at one of its saved locations.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
 @NonNullByDefault
-public class Vehicle {
+public class CurrentVehiclePositionProfile {
 
-    public String vin = "";
+    public long id;
     public String name = "";
-    public String licensePlate = "";
-    public String renderUrl = "";
-    public @Nullable VehicleStatus status;
-    public @Nullable FuelStatus fuelStatus;
-    public @Nullable Odometer odometer;
-    public @Nullable ParkingPosition parkingPosition;
-    public @Nullable AirConditioning airConditioning;
-    public @Nullable AuxiliaryHeating auxiliaryHeating;
-    public @Nullable ActiveVentilation activeVentilation;
-    public @Nullable Charging charging;
-    public @Nullable ChargingProfiles chargingProfiles;
+    public @Nullable Integer targetStateOfChargeInPercent;
+    public String nextChargingTime = "";
 }

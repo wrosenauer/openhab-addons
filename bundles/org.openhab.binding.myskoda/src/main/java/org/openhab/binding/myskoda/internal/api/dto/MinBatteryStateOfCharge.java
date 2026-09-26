@@ -10,21 +10,20 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.openhab.binding.myskoda.internal.config;
+package org.openhab.binding.myskoda.internal.api.dto;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
+import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * The {@link MySkodaVehicleConfiguration} class contains fields mapping the vehicle thing
- * configuration parameters.
+ * The {@link MinBatteryStateOfCharge} dto describes the charging profile setting that starts
+ * charging immediately, regardless of the profile's timers, while the battery is below a level.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
 @NonNullByDefault
-public class MySkodaVehicleConfiguration {
+public class MinBatteryStateOfCharge {
 
-    public String vin = "";
-    public int refreshInterval = 15;
-    public String sPin = "";
-    public String chargingProfile = "";
+    public @Nullable Boolean enabled;
+    public @Nullable Integer minimumBatteryStateOfChargeInPercent;
 }

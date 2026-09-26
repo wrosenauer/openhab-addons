@@ -16,24 +16,15 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * The {@link Vehicle} dto describes a vehicle and its current state.
+ * The {@link ChargingProfile} dto is a typed, read-only view of one charging profile. Timers and
+ * preferred charging times are not mapped - they are passed through unchanged in the raw profile.
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
 @NonNullByDefault
-public class Vehicle {
+public class ChargingProfile {
 
-    public String vin = "";
+    public long id;
     public String name = "";
-    public String licensePlate = "";
-    public String renderUrl = "";
-    public @Nullable VehicleStatus status;
-    public @Nullable FuelStatus fuelStatus;
-    public @Nullable Odometer odometer;
-    public @Nullable ParkingPosition parkingPosition;
-    public @Nullable AirConditioning airConditioning;
-    public @Nullable AuxiliaryHeating auxiliaryHeating;
-    public @Nullable ActiveVentilation activeVentilation;
-    public @Nullable Charging charging;
-    public @Nullable ChargingProfiles chargingProfiles;
+    public @Nullable ChargingProfileSettings settings;
 }

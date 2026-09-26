@@ -47,6 +47,9 @@ import org.openhab.binding.myskoda.internal.api.exception.MySkodaApiException;
 import org.openhab.binding.myskoda.internal.api.exception.MySkodaAuthException;
 import org.openhab.binding.myskoda.internal.api.exception.MySkodaRateLimitException;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 /**
  * Tests for {@link MySkodaApiClient}, mocking the Jetty {@link HttpClient} so no network calls
  * are made.
@@ -231,6 +234,22 @@ class MySkodaApiClientTest {
 
         assertThat(exception.getMessage(),
                 is("Invalid charging limit. (targetStateOfChargeInPercent must be one of [50,60,70,80,90,100])"));
+    }
+
+    @Test
+    void updateChargingProfileSendsCompleteProfile() throws Exception {
+        when(contentResponseMock.getStatus()).thenReturn(202);
+        when(contentResponseMock.getHeaders()).thenReturn(new HttpFields());
+        JsonObject profile = JsonParser
+                .parseString("{\"id\":123,\"name\":\"HOME\",\"settings\":{},\"timers\":[{\"id\":1}]}")
+                .getAsJsonObject();
+
+        client.updateChargingProfile(VIN, 123, profile);
+
+        verify(httpClientMock).newRequest(
+                "https://public.api.connect.skoda-auto.cz/api/v1/vehicles/" + VIN + "/charging-profiles/123");
+        verify(requestMock).method(HttpMethod.PUT);
+        assertThat(sentBody(), is(profile.toString()));
     }
 
     private String sentBody() {

@@ -46,6 +46,7 @@ public class MySkodaBindingConstants {
     public static final String GROUP_CLIMATE = "climate";
     public static final String GROUP_AUXILIARY_HEATING = "auxiliaryHeating";
     public static final String GROUP_ACTIVE_VENTILATION = "activeVentilation";
+    public static final String GROUP_CHARGING_PROFILE = "chargingProfile";
 
     // status channel ids
     public static final String CHANNEL_OVERALL_DOORS_LOCKED = "overall-doors-locked";
@@ -122,6 +123,14 @@ public class MySkodaBindingConstants {
     public static final String CHANNEL_ACTIVE_VENTILATION_STATE = "active-ventilation-state";
     public static final String CHANNEL_ACTIVE_VENTILATION_DURATION = "active-ventilation-duration";
     public static final String CHANNEL_ACTIVE_VENTILATION = "active-ventilation-switch";
+
+    // charging profile channel ids (the group also reuses target-state-of-charge, max-charge-current,
+    // auto-unlock-plug and last-updated)
+    public static final String CHANNEL_PROFILE_NAME = "name";
+    public static final String CHANNEL_AT_PROFILE_LOCATION = "at-location";
+    public static final String CHANNEL_NEXT_CHARGING_TIME = "next-charging-time";
+    public static final String CHANNEL_MIN_STATE_OF_CHARGE_ENABLED = "min-state-of-charge-enabled";
+    public static final String CHANNEL_MIN_STATE_OF_CHARGE = "min-state-of-charge";
 
     // shared "last updated" channel id used in status/odometer/fuel/charging/climate groups
     public static final String CHANNEL_LAST_UPDATED = "last-updated";

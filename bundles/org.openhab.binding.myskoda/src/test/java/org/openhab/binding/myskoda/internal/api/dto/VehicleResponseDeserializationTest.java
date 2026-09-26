@@ -71,6 +71,12 @@ class VehicleResponseDeserializationTest {
         assertThat(vehicle.charging.settings.targetStateOfChargeInPercent, is(80));
         assertThat(vehicle.charging.settings.availableChargeModes, is(List.of("MANUAL", "TIMER")));
 
+        assertThat(vehicle.chargingProfiles, notNullValue());
+        assertThat(vehicle.chargingProfiles.profiles.size(), is(2));
+        assertThat(vehicle.chargingProfiles.currentVehiclePositionProfile, notNullValue());
+        assertThat(vehicle.chargingProfiles.currentVehiclePositionProfile.id, is(123456L));
+        assertThat(vehicle.chargingProfiles.currentVehiclePositionProfile.nextChargingTime, is("22:00"));
+
         assertThat(vehicle.airConditioning, notNullValue());
         assertThat(vehicle.airConditioning.state, is("HEATING"));
         assertThat(vehicle.airConditioning.targetTemperature, notNullValue());

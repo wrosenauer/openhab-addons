@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
 /**
@@ -113,6 +114,15 @@ public class MySkodaApiClient {
     public void setChargeMode(String vin, String chargeMode)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
         execute(HttpMethod.PUT, vin, "/charging/mode", gson.toJson(new ChargeMode(chargeMode)));
+    }
+
+    /**
+     * Replace a charging profile. The vehicle applies the submitted profile as a whole, so
+     * {@code profile} must be complete, not just the changed fields.
+     */
+    public void updateChargingProfile(String vin, long profileId, JsonObject profile)
+            throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
+        execute(HttpMethod.PUT, vin, "/charging-profiles/" + profileId, profile.toString());
     }
 
     public void startAirConditioning(String vin, @Nullable TargetTemperature targetTemperature,

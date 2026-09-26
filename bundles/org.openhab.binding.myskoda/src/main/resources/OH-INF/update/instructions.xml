@@ -14,6 +14,36 @@
 			</add-channel>
 		</instruction-set>
 
+		<instruction-set targetVersion="2">
+			<add-channel id="name" groupIds="chargingProfile">
+				<type>myskoda:profile-name</type>
+			</add-channel>
+			<add-channel id="at-location" groupIds="chargingProfile">
+				<type>myskoda:at-profile-location</type>
+			</add-channel>
+			<add-channel id="next-charging-time" groupIds="chargingProfile">
+				<type>myskoda:next-charging-time</type>
+			</add-channel>
+			<add-channel id="target-state-of-charge" groupIds="chargingProfile">
+				<type>myskoda:profile-target-state-of-charge</type>
+			</add-channel>
+			<add-channel id="max-charge-current" groupIds="chargingProfile">
+				<type>myskoda:profile-max-charge-current</type>
+			</add-channel>
+			<add-channel id="auto-unlock-plug" groupIds="chargingProfile">
+				<type>myskoda:profile-auto-unlock-plug</type>
+			</add-channel>
+			<add-channel id="min-state-of-charge-enabled" groupIds="chargingProfile">
+				<type>myskoda:min-state-of-charge-enabled</type>
+			</add-channel>
+			<add-channel id="min-state-of-charge" groupIds="chargingProfile">
+				<type>myskoda:min-state-of-charge</type>
+			</add-channel>
+			<add-channel id="last-updated" groupIds="chargingProfile">
+				<type>myskoda:charging-profile-last-updated</type>
+			</add-channel>
+		</instruction-set>
+
 	</thing-type>
 
 </update:update-descriptions>
