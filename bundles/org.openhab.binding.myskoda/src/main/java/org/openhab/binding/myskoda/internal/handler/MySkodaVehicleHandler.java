@@ -17,11 +17,16 @@ import static org.openhab.binding.myskoda.internal.MySkodaBindingConstants.*;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -47,6 +52,7 @@ import org.openhab.binding.myskoda.internal.api.dto.OverallVehicleStatus;
 import org.openhab.binding.myskoda.internal.api.dto.ParkingPosition;
 import org.openhab.binding.myskoda.internal.api.dto.TargetTemperature;
 import org.openhab.binding.myskoda.internal.api.dto.Vehicle;
+import org.openhab.binding.myskoda.internal.api.dto.VehicleError;
 import org.openhab.binding.myskoda.internal.api.dto.VehicleOperation;
 import org.openhab.binding.myskoda.internal.api.dto.VehicleResponse;
 import org.openhab.binding.myskoda.internal.api.dto.VehicleStatus;
@@ -66,13 +72,15 @@ import org.openhab.core.library.unit.MetricPrefix;
 import org.openhab.core.library.unit.SIUnits;
 import org.openhab.core.library.unit.Units;
 import org.openhab.core.thing.Bridge;
+import org.openhab.core.thing.Channel;
+import org.openhab.core.thing.ChannelGroupUID;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.thing.binding.ThingHandlerCallback;
-import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.type.ChannelGroupTypeUID;
 import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.RefreshType;
@@ -118,6 +126,29 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             return supported.contains(operation) || (stop != null && supported.contains(stop));
         }
     }
+
+    /**
+     * A channel group, the channel group type, and the part of the vehicle data that feeds it
+     * (with the prefix of the errors the API reports for that part). The group is removed from the
+     * thing while the vehicle does not support the part.
+     */
+    private record DataGroup(String group, String groupType, String errorPrefix,
+            Function<Vehicle, @Nullable Object> part) {
+    }
+
+    private static final List<DataGroup> DATA_GROUPS = List.of(
+            new DataGroup(GROUP_STATUS, "status-values", "VEHICLE_STATUS", vehicle -> vehicle.status),
+            new DataGroup(GROUP_ODOMETER, "odometer-values", "ODOMETER", vehicle -> vehicle.odometer),
+            new DataGroup(GROUP_FUEL, "fuel-values", "FUEL_STATUS", vehicle -> vehicle.fuelStatus),
+            new DataGroup(GROUP_POSITION, "position-values", "PARKING_POSITION", vehicle -> vehicle.parkingPosition),
+            new DataGroup(GROUP_CHARGING, "charging-values", "CHARGING", vehicle -> vehicle.charging),
+            new DataGroup(GROUP_CLIMATE, "climate-values", "AIR_CONDITIONING", vehicle -> vehicle.airConditioning),
+            new DataGroup(GROUP_AUXILIARY_HEATING, "auxiliary-heating-values", "AUXILIARY_HEATING",
+                    vehicle -> vehicle.auxiliaryHeating),
+            new DataGroup(GROUP_ACTIVE_VENTILATION, "active-ventilation-values", "ACTIVE_VENTILATION",
+                    vehicle -> vehicle.activeVentilation),
+            new DataGroup(GROUP_CHARGING_PROFILE, "charging-profile-values", "CHARGING_PROFILES",
+                    vehicle -> vehicle.chargingProfiles));
 
     private static final List<CommandChannel> COMMAND_CHANNELS = List.of(
             new CommandChannel(GROUP_CHARGING, CHANNEL_CHARGING, OPERATION_START_CHARGING, OPERATION_STOP_CHARGING,
@@ -170,6 +201,8 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
 
     // operations the vehicle supports; null while unknown
     private volatile @Nullable Set<String> supportedOperations;
+    // channel groups whose data the vehicle does not support; only used by the polling job
+    private final Set<String> unsupportedGroups = new HashSet<>();
 
     public MySkodaVehicleHandler(Thing thing, MySkodaStateDescriptionProvider stateDescriptionProvider) {
         super(thing);
@@ -232,7 +265,7 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             }
             updateStatus(ThingStatus.ONLINE);
             updateVehicleProperties(vehicle);
-            updateSupportedOperations(vehicle.operations);
+            updateChannelStructure(vehicle, response.errors);
             updateStatusGroup(vehicle.status);
             updateOdometerGroup(vehicle.odometer);
             updateFuelGroup(vehicle.fuelStatus);
@@ -266,45 +299,93 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
     }
 
     /**
-     * Remove the controls and make read-only the settings whose operation the vehicle does not
-     * support - and undo that if it does again. Nothing changes while the operations are unknown.
+     * Track which data groups and operations the vehicle supports and adapt the thing's channels
+     * when that changes. Package-private for tests.
      */
-    private void updateSupportedOperations(@Nullable List<VehicleOperation> operations) {
-        if (operations == null) {
-            return;
+    void updateChannelStructure(Vehicle vehicle, List<VehicleError> errors) {
+        boolean changed = false;
+        for (DataGroup dataGroup : DATA_GROUPS) {
+            if (dataGroup.part().apply(vehicle) != null) {
+                changed |= unsupportedGroups.remove(dataGroup.group());
+            } else if (isUnsupported(dataGroup, errors)) {
+                changed |= unsupportedGroups.add(dataGroup.group());
+            }
         }
-        Set<String> supported = operations.stream().map(operation -> operation.name)
-                .collect(Collectors.toUnmodifiableSet());
-        if (supported.equals(supportedOperations)) {
-            return;
+        List<VehicleOperation> operations = vehicle.operations;
+        if (operations != null) {
+            Set<String> supported = operations.stream().map(operation -> operation.name)
+                    .collect(Collectors.toUnmodifiableSet());
+            if (!supported.equals(supportedOperations)) {
+                supportedOperations = supported;
+                changed = true;
+            }
         }
-        supportedOperations = supported;
+        if (changed) {
+            applyChannelStructure();
+        }
+    }
 
-        ThingBuilder builder = editThing();
-        boolean thingChanged = false;
+    /**
+     * A part missing from the response is unsupported unless an error reports it as currently
+     * disabled or unavailable. Without {@code include}, the API omits unsupported parts without an
+     * error, but an {@code *_UNSUPPORTED} error is accepted as well.
+     */
+    private static boolean isUnsupported(DataGroup dataGroup, List<VehicleError> errors) {
+        for (VehicleError error : errors) {
+            if (error.type.equals(dataGroup.errorPrefix() + "_DISABLED")
+                    || error.type.equals(dataGroup.errorPrefix() + "_UNAVAILABLE")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Remove the channel groups of unsupported data and the controls of unsupported operations,
+     * and make read-only the settings whose operation is unsupported - or undo all that once the
+     * vehicle supports them again.
+     */
+    private void applyChannelStructure() {
+        ThingHandlerCallback callback = getCallback();
+        if (callback == null) {
+            return;
+        }
+        Map<ChannelUID, Channel> channels = new LinkedHashMap<>();
+        getThing().getChannels().forEach(channel -> channels.put(channel.getUID(), channel));
+        Set<ChannelUID> before = Set.copyOf(channels.keySet());
+
+        for (DataGroup dataGroup : DATA_GROUPS) {
+            String group = dataGroup.group();
+            if (unsupportedGroups.contains(group)) {
+                channels.keySet().removeIf(channelUID -> group.equals(channelUID.getGroupId()));
+            } else if (channels.keySet().stream().noneMatch(channelUID -> group.equals(channelUID.getGroupId()))) {
+                callback.createChannelBuilders(new ChannelGroupUID(getThing().getUID(), group),
+                        new ChannelGroupTypeUID(BINDING_ID, dataGroup.groupType())).forEach(builder -> {
+                            Channel channel = builder.build();
+                            channels.put(channel.getUID(), channel);
+                        });
+            }
+        }
+
+        Set<String> supported = supportedOperations;
         for (CommandChannel commandChannel : COMMAND_CHANNELS) {
             ChannelUID channelUID = channel(commandChannel.group(), commandChannel.channel());
-            boolean isSupported = commandChannel.isSupportedBy(supported);
+            boolean isSupported = supported == null || commandChannel.isSupportedBy(supported);
             if (!commandChannel.control()) {
                 stateDescriptionProvider.setReadOnly(channelUID, !isSupported);
-                continue;
-            }
-            boolean present = getThing().getChannel(channelUID) != null;
-            ThingHandlerCallback callback = getCallback();
-            if (!isSupported && present) {
-                logger.debug("Vehicle {} does not support {}, removing channel {}", config.vin,
-                        commandChannel.operation(), channelUID);
-                builder.withoutChannel(channelUID);
-                thingChanged = true;
-            } else if (isSupported && !present && callback != null) {
-                builder.withChannel(callback
+            } else if (!isSupported) {
+                channels.remove(channelUID);
+            } else if (!unsupportedGroups.contains(commandChannel.group()) && !channels.containsKey(channelUID)) {
+                channels.put(channelUID, callback
                         .createChannelBuilder(channelUID, new ChannelTypeUID(BINDING_ID, commandChannel.channel()))
                         .build());
-                thingChanged = true;
             }
         }
-        if (thingChanged) {
-            updateThing(builder.build());
+
+        if (!channels.keySet().equals(before)) {
+            logger.debug("Adapting channels of vehicle {}: unsupported groups {}, supported operations {}", config.vin,
+                    unsupportedGroups, supported);
+            updateThing(editThing().withChannels(new ArrayList<>(channels.values())).build());
         }
     }
 

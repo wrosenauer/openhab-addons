@@ -29,10 +29,11 @@ auxiliary heating and active ventilation. It can start/stop charging, air condit
 auxiliary heating and active ventilation, set the charging limit (target state of charge)
 and charge mode, and change the settings of a charging profile.
 
-Which data is available depends on what the vehicle supports. Parts a vehicle does not support
-are simply not reported, and their channels stay `NULL`. Parts that could not be retrieved at
-the time of a poll keep their last known values. A single value the vehicle does not report is
-set to `UNDEF`.
+Which data is available depends on what the vehicle supports. Channel groups for data a vehicle
+does not support are removed from the thing (see
+[Unsupported Data and Operations](#unsupported-data-and-operations)). Data that could not be
+retrieved at the time of a poll keeps its last known values. A single value the vehicle does not
+report is set to `UNDEF`.
 
 ## Rate Limits and Polling
 
@@ -115,11 +116,14 @@ Channels that can be changed:
 
 All other channels are read-only.
 
-### Unsupported Operations
+### Unsupported Data and Operations
 
-The API reports which remote operations a vehicle supports. The binding adapts the channels to it
-after the first poll:
+The binding adapts the `vehicle` thing to what the vehicle supports after the first poll:
 
+- a **channel group** is **removed** when the vehicle does not support its data, e.g. `fuel` for a
+  battery-electric vehicle, `charging` and `chargingProfile` for a vehicle without a high-voltage
+  battery, or `auxiliaryHeating` for a vehicle without auxiliary heating. A group whose data is
+  only temporarily missing - reported by the API as disabled or unavailable - is kept;
 - a start/stop switch (`charging-switch`, `air-conditioning-switch`, `auxiliary-heating-switch`,
   `active-ventilation-switch`) is **removed** from the thing when the vehicle supports neither
   starting nor stopping, e.g. the auxiliary heating switch of a vehicle without auxiliary heating;
@@ -127,9 +131,9 @@ after the first poll:
   parameters) stays, but becomes **read-only**.
 
 Commands for an operation the vehicle does not support are ignored with a warning in the log
-instead of being sent. If the vehicle later reports an operation as supported, the channel is
-added back or becomes writable again. When the API cannot determine the supported operations,
-all channels stay as they are.
+instead of being sent. If the vehicle later reports data or an operation as supported, the
+channels are added back or become writable again. When the API cannot determine the supported
+operations, the switches and settings stay as they are.
 
 ### Start Parameters
 
@@ -306,7 +310,7 @@ Location    MySkoda_Location          "Location"              { channel="myskoda
 | Vehicle `OFFLINE` with a configuration error after the first poll | The key does not cover this VIN (or is invalid). Check the VIN, or create a key that includes the vehicle.                                                |
 | Vehicle `OFFLINE`, rate limit message                          | The vehicle's hourly quota is used up. It comes back online by itself; increase `refreshInterval` or send fewer commands.                                    |
 | A command has no effect, warning in the log                    | The vehicle refused the operation (not supported, currently disabled, not authorized for your user, or temporarily not accepting requests). The log shows the reason. |
-| A switch channel disappeared, or a setting cannot be changed any more | The vehicle does not support the operation, see [Unsupported Operations](#unsupported-operations). |
+| A channel group or switch disappeared, or a setting cannot be changed any more | The vehicle does not support that data or operation, see [Unsupported Data and Operations](#unsupported-data-and-operations). |
 | `chargingProfile` channels are `UNDEF`, changes are rejected | The vehicle is not at a saved charging location, or no profile matches the `chargingProfile` parameter. Set the parameter to the profile's name as shown in the app (or its id). |
 | `target-state-of-charge` is rejected                           | Most vehicles only accept 50 to 100 % in steps of 10; the log lists the values the vehicle accepts.                                                        |
 
@@ -324,10 +328,11 @@ dates below refer to the entries in the [changelog](#changelog).
   `.things` files always use the current channel list anyway. Only if the channels are still
   missing, delete and re-add the `vehicle` thing.
 - **New channel group `chargingProfile`** - also added automatically, like the plug channels.
-- **Unsupported controls are removed:** after the first poll, start/stop switches of operations
-  your vehicle does not support are removed from the thing (see
-  [Unsupported Operations](#unsupported-operations)). Items linked to such a channel keep an orphaned link
-  that you can delete; they never worked for that vehicle anyway.
+- **Unsupported groups and controls are removed:** after the first poll, the channel groups of
+  data and the start/stop switches of operations your vehicle does not support are removed from
+  the thing (see [Unsupported Data and Operations](#unsupported-data-and-operations)). Items
+  linked to such a channel keep an orphaned link that you can delete; they never received data
+  for that vehicle anyway.
 - **Channels that became writable** (`target-state-of-charge`, `preferred-charge-mode`,
   `without-external-power`, `start-mode`) change without any action. Check your rules: a
   `sendCommand` to `target-state-of-charge` or `preferred-charge-mode` now **changes the
@@ -362,8 +367,9 @@ dates below refer to the entries in the [changelog](#changelog).
   the profile. The profile is read again before each change, and changes the vehicle has not
   reported yet are kept so consecutive changes do not undo each other. Timers and preferred
   charging times are shown as read-only text.
-- Controls of operations the vehicle does not support are removed, and settings it cannot change
-  become read-only; commands for them are no longer sent.
+- Channel groups of data the vehicle does not support (e.g. `fuel` for a battery-electric
+  vehicle) and controls of operations it does not support are removed, and settings it cannot
+  change become read-only; commands for them are no longer sent.
 - New channels `plug-connection-state` and `plug-lock-state` (API 1.1.0), and new `vehicle`
   properties `vehicleName` and `licensePlate`.
 - The quota is tracked per VIN, as documented by the API, instead of per API key.
