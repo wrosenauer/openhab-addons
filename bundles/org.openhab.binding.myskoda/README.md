@@ -334,7 +334,12 @@ dates below refer to the entries in the [changelog](#changelog).
   linked to such a channel keep an orphaned link that you can delete; they never received data
   for that vehicle anyway.
 - **Channels that became writable** (`target-state-of-charge`, `preferred-charge-mode`,
-  `without-external-power`, `start-mode`) change without any action. Check your rules: a
+  `without-external-power`, `start-mode`) are refreshed automatically, including their new
+  semantic tags (e.g. `target-state-of-charge` is now a `Setpoint`). **Items you already linked
+  to them keep their old semantic tags**, though - openHAB copies the tags when an item is created
+  and never updates them. The Main UI decides by these tags whether it shows a control or just the
+  value, so change the semantic class of such items to `Setpoint` (charging limit) or `Control`
+  (charge mode) in the item settings, or delete and re-create them. Check your rules: a
   `sendCommand` to `target-state-of-charge` or `preferred-charge-mode` now **changes the
   vehicle's settings** and costs a request; use `postUpdate` if you only meant to change the
   item state.
@@ -361,6 +366,8 @@ dates below refer to the entries in the [changelog](#changelog).
   are sent with the next start command instead of fixed values.
 - Start parameters (target temperatures, duration, start mode, without external power) set
   through a channel are no longer overwritten by a poll before they are sent.
+- Existing channels that became writable are refreshed through update instructions, so they get
+  their new semantic tags and descriptions.
 - New `chargingProfile` channel group to view and change the settings of a charging profile
   (target state of charge, max charge current, plug auto-unlock, minimum state of charge), using
   `PUT /charging-profiles/{id}`, and new `chargingProfile` configuration parameter to select

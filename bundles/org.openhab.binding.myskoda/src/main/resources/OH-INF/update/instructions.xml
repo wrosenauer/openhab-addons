@@ -53,6 +53,31 @@
 			</add-channel>
 		</instruction-set>
 
+		<!-- refresh channels created by the 2026-08-31 version, whose tags and descriptions changed when they became writable -->
+		<instruction-set targetVersion="4">
+			<update-channel id="target-state-of-charge" groupIds="charging">
+				<type>myskoda:target-state-of-charge</type>
+			</update-channel>
+			<update-channel id="preferred-charge-mode" groupIds="charging">
+				<type>myskoda:preferred-charge-mode</type>
+			</update-channel>
+			<update-channel id="target-temperature" groupIds="climate">
+				<type>myskoda:target-temperature</type>
+			</update-channel>
+			<update-channel id="without-external-power" groupIds="climate">
+				<type>myskoda:without-external-power</type>
+			</update-channel>
+			<update-channel id="auxiliary-target-temperature" groupIds="auxiliaryHeating">
+				<type>myskoda:target-temperature</type>
+			</update-channel>
+			<update-channel id="start-mode" groupIds="auxiliaryHeating">
+				<type>myskoda:auxiliary-start-mode</type>
+			</update-channel>
+			<update-channel id="duration" groupIds="auxiliaryHeating">
+				<type>myskoda:auxiliary-duration</type>
+			</update-channel>
+		</instruction-set>
+
 	</thing-type>
 
 </update:update-descriptions>

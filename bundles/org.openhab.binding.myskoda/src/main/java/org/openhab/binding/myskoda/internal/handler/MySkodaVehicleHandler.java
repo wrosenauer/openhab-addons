@@ -316,6 +316,7 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             Set<String> supported = operations.stream().map(operation -> operation.name)
                     .collect(Collectors.toUnmodifiableSet());
             if (!supported.equals(supportedOperations)) {
+                logger.debug("Vehicle {} supports the operations {}", config.vin, supported);
                 supportedOperations = supported;
                 changed = true;
             }
