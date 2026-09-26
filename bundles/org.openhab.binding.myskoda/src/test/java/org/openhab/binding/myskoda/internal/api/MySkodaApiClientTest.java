@@ -237,6 +237,18 @@ class MySkodaApiClientTest {
     }
 
     @Test
+    void getVehicleLimitsResponseToIncludedParts() throws Exception {
+        when(contentResponseMock.getStatus()).thenReturn(200);
+        when(contentResponseMock.getContentAsString()).thenReturn("{\"vehicle\":{\"vin\":\"" + VIN + "\"}}");
+        when(contentResponseMock.getHeaders()).thenReturn(new HttpFields());
+
+        client.getVehicle(VIN, "chargingProfiles", "operations");
+
+        verify(httpClientMock).newRequest("https://public.api.connect.skoda-auto.cz/api/v1/vehicles/" + VIN
+                + "?include=chargingProfiles,operations");
+    }
+
+    @Test
     void updateChargingProfileSendsCompleteProfile() throws Exception {
         when(contentResponseMock.getStatus()).thenReturn(202);
         when(contentResponseMock.getHeaders()).thenReturn(new HttpFields());

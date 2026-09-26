@@ -25,6 +25,7 @@ import java.util.Objects;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openhab.binding.myskoda.internal.api.dto.ChargingProfile;
 import org.openhab.binding.myskoda.internal.api.dto.ChargingProfiles;
 import org.openhab.binding.myskoda.internal.api.dto.VehicleResponse;
 
@@ -101,6 +102,37 @@ class ChargingProfileSupportTest {
         assertThat(updated.getAsJsonObject("settings").getAsJsonObject("minBatteryStateOfCharge").get("enabled")
                 .getAsBoolean(), is(true));
         assertThat(updated.getAsJsonObject("settings").get("targetStateOfChargeInPercent").getAsInt(), is(60));
+    }
+
+    @Test
+    void formatsTimersAndChargingTimesAsText() {
+        ChargingProfile home = Objects.requireNonNull(ChargingProfileSupport.parse(selectExisting("HOME")));
+
+        assertThat(ChargingProfileSupport.formatTimers(home.timers), is("1: 07:00 Mon, Fri; 2: 06:30 once Tue (off)"));
+        assertThat(ChargingProfileSupport.formatChargingTimes(home.preferredChargingTimes), is("1: 22:00-06:00"));
+
+        ChargingProfile work = Objects.requireNonNull(ChargingProfileSupport.parse(selectExisting("Work")));
+        assertThat(ChargingProfileSupport.formatTimers(work.timers), is(""));
+    }
+
+    @Test
+    void pendingChangeIsAppliedUntilTheVehicleReportsIt() {
+        PendingProfileChanges pending = new PendingProfileChanges();
+        JsonObject stale = selectExisting("HOME");
+        pending.add(123456, new JsonPrimitive(90), "targetStateOfChargeInPercent");
+
+        // the vehicle still reports the old value - the pending change is applied on top
+        JsonObject shown = pending.applyTo(123456, stale);
+        assertThat(ChargingProfileSupport.getSetting(shown, "targetStateOfChargeInPercent"), is(new JsonPrimitive(90)));
+        // other profiles are not affected
+        JsonObject work = selectExisting("Work");
+        assertThat(pending.applyTo(654321, work), is(work));
+
+        // once the vehicle reports the value, the change is no longer pending
+        JsonObject confirmed = ChargingProfileSupport.withSetting(stale, new JsonPrimitive(90),
+                "targetStateOfChargeInPercent");
+        pending.applyTo(123456, confirmed);
+        assertThat(pending.applyTo(123456, stale), is(stale));
     }
 
     private JsonObject selectExisting(String configured) {

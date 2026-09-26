@@ -22,6 +22,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -46,6 +47,7 @@ import org.openhab.binding.myskoda.internal.api.dto.OverallVehicleStatus;
 import org.openhab.binding.myskoda.internal.api.dto.ParkingPosition;
 import org.openhab.binding.myskoda.internal.api.dto.TargetTemperature;
 import org.openhab.binding.myskoda.internal.api.dto.Vehicle;
+import org.openhab.binding.myskoda.internal.api.dto.VehicleOperation;
 import org.openhab.binding.myskoda.internal.api.dto.VehicleResponse;
 import org.openhab.binding.myskoda.internal.api.dto.VehicleStatus;
 import org.openhab.binding.myskoda.internal.api.dto.VehicleStatusDetail;
@@ -69,6 +71,9 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerCallback;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.RefreshType;
 import org.openhab.core.types.State;
@@ -99,6 +104,54 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
 
     private static final Set<String> AUXILIARY_START_MODES = Set.of("HEATING", "VENTILATION");
 
+    /**
+     * A channel that accepts commands, and the operation it needs. A control (a start/stop switch)
+     * is removed from the thing when the vehicle supports neither of its operations; the other
+     * channels also show a value and are made read-only instead. The channel type id of a control
+     * equals its channel id.
+     */
+    private record CommandChannel(String group, String channel, String operation, @Nullable String stopOperation,
+            boolean control) {
+
+        boolean isSupportedBy(Set<String> supported) {
+            String stop = stopOperation;
+            return supported.contains(operation) || (stop != null && supported.contains(stop));
+        }
+    }
+
+    private static final List<CommandChannel> COMMAND_CHANNELS = List.of(
+            new CommandChannel(GROUP_CHARGING, CHANNEL_CHARGING, OPERATION_START_CHARGING, OPERATION_STOP_CHARGING,
+                    true),
+            new CommandChannel(GROUP_CHARGING, CHANNEL_TARGET_STATE_OF_CHARGE, OPERATION_SET_CHARGING_LIMIT, null,
+                    false),
+            new CommandChannel(GROUP_CHARGING, CHANNEL_PREFERRED_CHARGE_MODE, OPERATION_SET_CHARGE_MODE, null, false),
+            new CommandChannel(GROUP_CHARGING_PROFILE, CHANNEL_TARGET_STATE_OF_CHARGE,
+                    OPERATION_UPDATE_CHARGING_PROFILE, null, false),
+            new CommandChannel(GROUP_CHARGING_PROFILE, CHANNEL_MAX_CHARGE_CURRENT, OPERATION_UPDATE_CHARGING_PROFILE,
+                    null, false),
+            new CommandChannel(GROUP_CHARGING_PROFILE, CHANNEL_AUTO_UNLOCK_PLUG, OPERATION_UPDATE_CHARGING_PROFILE,
+                    null, false),
+            new CommandChannel(GROUP_CHARGING_PROFILE, CHANNEL_MIN_STATE_OF_CHARGE_ENABLED,
+                    OPERATION_UPDATE_CHARGING_PROFILE, null, false),
+            new CommandChannel(GROUP_CHARGING_PROFILE, CHANNEL_MIN_STATE_OF_CHARGE, OPERATION_UPDATE_CHARGING_PROFILE,
+                    null, false),
+            new CommandChannel(GROUP_CLIMATE, CHANNEL_AIR_CONDITIONING, OPERATION_START_AIR_CONDITIONING,
+                    OPERATION_STOP_AIR_CONDITIONING, true),
+            new CommandChannel(GROUP_CLIMATE, CHANNEL_TARGET_TEMPERATURE, OPERATION_START_AIR_CONDITIONING, null,
+                    false),
+            new CommandChannel(GROUP_CLIMATE, CHANNEL_WITHOUT_EXTERNAL_POWER, OPERATION_START_AIR_CONDITIONING, null,
+                    false),
+            new CommandChannel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_HEATING, OPERATION_START_AUXILIARY_HEATING,
+                    OPERATION_STOP_AUXILIARY_HEATING, true),
+            new CommandChannel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_TARGET_TEMPERATURE,
+                    OPERATION_START_AUXILIARY_HEATING, null, false),
+            new CommandChannel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_DURATION, OPERATION_START_AUXILIARY_HEATING,
+                    null, false),
+            new CommandChannel(GROUP_AUXILIARY_HEATING, CHANNEL_AUXILIARY_START_MODE, OPERATION_START_AUXILIARY_HEATING,
+                    null, false),
+            new CommandChannel(GROUP_ACTIVE_VENTILATION, CHANNEL_ACTIVE_VENTILATION, OPERATION_START_ACTIVE_VENTILATION,
+                    OPERATION_STOP_ACTIVE_VENTILATION, true));
+
     private final Logger logger = LoggerFactory.getLogger(MySkodaVehicleHandler.class);
     private final MySkodaStateDescriptionProvider stateDescriptionProvider;
 
@@ -111,9 +164,12 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
     private final StartParameter<Integer> auxiliaryHeatingDurationSeconds = new StartParameter<>(600);
     private final StartParameter<String> auxiliaryHeatingStartMode = new StartParameter<>("HEATING");
 
-    // the raw charging profile shown in the chargingProfile group, guarded by chargingProfileLock
+    // serializes charging profile changes, each of which reads and then replaces the whole profile
     private final Object chargingProfileLock = new Object();
-    private @Nullable JsonObject chargingProfile;
+    private final PendingProfileChanges pendingProfileChanges = new PendingProfileChanges();
+
+    // operations the vehicle supports; null while unknown
+    private volatile @Nullable Set<String> supportedOperations;
 
     public MySkodaVehicleHandler(Thing thing, MySkodaStateDescriptionProvider stateDescriptionProvider) {
         super(thing);
@@ -176,6 +232,7 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
             }
             updateStatus(ThingStatus.ONLINE);
             updateVehicleProperties(vehicle);
+            updateSupportedOperations(vehicle.operations);
             updateStatusGroup(vehicle.status);
             updateOdometerGroup(vehicle.odometer);
             updateFuelGroup(vehicle.fuelStatus);
@@ -206,6 +263,63 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         if (!vehicle.licensePlate.isBlank()) {
             updateProperty(PROPERTY_LICENSE_PLATE, vehicle.licensePlate);
         }
+    }
+
+    /**
+     * Remove the controls and make read-only the settings whose operation the vehicle does not
+     * support - and undo that if it does again. Nothing changes while the operations are unknown.
+     */
+    private void updateSupportedOperations(@Nullable List<VehicleOperation> operations) {
+        if (operations == null) {
+            return;
+        }
+        Set<String> supported = operations.stream().map(operation -> operation.name)
+                .collect(Collectors.toUnmodifiableSet());
+        if (supported.equals(supportedOperations)) {
+            return;
+        }
+        supportedOperations = supported;
+
+        ThingBuilder builder = editThing();
+        boolean thingChanged = false;
+        for (CommandChannel commandChannel : COMMAND_CHANNELS) {
+            ChannelUID channelUID = channel(commandChannel.group(), commandChannel.channel());
+            boolean isSupported = commandChannel.isSupportedBy(supported);
+            if (!commandChannel.control()) {
+                stateDescriptionProvider.setReadOnly(channelUID, !isSupported);
+                continue;
+            }
+            boolean present = getThing().getChannel(channelUID) != null;
+            ThingHandlerCallback callback = getCallback();
+            if (!isSupported && present) {
+                logger.debug("Vehicle {} does not support {}, removing channel {}", config.vin,
+                        commandChannel.operation(), channelUID);
+                builder.withoutChannel(channelUID);
+                thingChanged = true;
+            } else if (isSupported && !present && callback != null) {
+                builder.withChannel(callback
+                        .createChannelBuilder(channelUID, new ChannelTypeUID(BINDING_ID, commandChannel.channel()))
+                        .build());
+                thingChanged = true;
+            }
+        }
+        if (thingChanged) {
+            updateThing(builder.build());
+        }
+    }
+
+    /**
+     * @return the operation a command to a channel needs, or null if it needs none
+     */
+    private static @Nullable String requiredOperation(ChannelUID channelUID, Command command) {
+        for (CommandChannel commandChannel : COMMAND_CHANNELS) {
+            if (commandChannel.group().equals(channelUID.getGroupId())
+                    && commandChannel.channel().equals(channelUID.getIdWithoutGroup())) {
+                String stop = commandChannel.stopOperation();
+                return stop != null && command == OnOffType.OFF ? stop : commandChannel.operation();
+            }
+        }
+        return null;
     }
 
     private void updateStatusGroup(@Nullable VehicleStatus status) {
@@ -433,10 +547,7 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         if (profiles == null) {
             return;
         }
-        JsonObject raw = ChargingProfileSupport.select(profiles, config.chargingProfile);
-        synchronized (chargingProfileLock) {
-            chargingProfile = raw;
-        }
+        JsonObject raw = selectChargingProfile(profiles);
         ChargingProfile profile = raw == null ? null : ChargingProfileSupport.parse(raw);
         CurrentVehiclePositionProfile current = profiles.currentVehiclePositionProfile;
         boolean atLocation = profile != null && current != null && current.id == profile.id;
@@ -446,6 +557,15 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         updateChargingProfileChannels(profile);
         updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_LAST_UPDATED),
                 dateTimeOrUndef(profiles.carCapturedTimestamp));
+    }
+
+    /**
+     * @return the charging profile to show, with the changes still pending applied
+     */
+    private @Nullable JsonObject selectChargingProfile(ChargingProfiles profiles) {
+        JsonObject raw = ChargingProfileSupport.select(profiles, config.chargingProfile);
+        ChargingProfile parsed = raw == null ? null : ChargingProfileSupport.parse(raw);
+        return raw == null || parsed == null ? null : pendingProfileChanges.applyTo(parsed.id, raw);
     }
 
     private void updateChargingProfileChannels(@Nullable ChargingProfile profile) {
@@ -464,12 +584,17 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_MIN_STATE_OF_CHARGE),
                 minStateOfCharge == null ? UnDefType.UNDEF
                         : percentOrUndef(minStateOfCharge.minimumBatteryStateOfChargeInPercent));
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_TIMERS), profile == null ? UnDefType.UNDEF
+                : new StringType(ChargingProfileSupport.formatTimers(profile.timers)));
+        updateState(channel(GROUP_CHARGING_PROFILE, CHANNEL_PREFERRED_CHARGING_TIMES), profile == null ? UnDefType.UNDEF
+                : new StringType(ChargingProfileSupport.formatChargingTimes(profile.preferredChargingTimes)));
     }
 
     /**
      * Change one setting of the shown charging profile. The API replaces a profile as a whole, so
-     * the complete profile from the last poll is sent with only that setting changed, and kept as
-     * the current profile until the next poll reports the vehicle's state.
+     * the profile is read again right before the change - it may have been edited in the MyŠkoda
+     * app since the last poll - and sent back complete with only that setting changed. Changes
+     * still pending from earlier commands are applied on top, see {@link PendingProfileChanges}.
      */
     private void handleChargingProfileCommand(MySkodaApiClient apiClient, ChannelUID channelUID, Command command)
             throws MySkodaApiException, InterruptedException {
@@ -518,18 +643,26 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
                 return;
         }
         synchronized (chargingProfileLock) {
-            JsonObject profile = chargingProfile;
+            Vehicle vehicle = apiClient.getVehicle(config.vin, "chargingProfiles").vehicle;
+            ChargingProfiles profiles = vehicle == null ? null : vehicle.chargingProfiles;
+            if (profiles == null) {
+                logger.warn("Cannot change charging profile of vehicle {}: the vehicle did not report its profiles",
+                        config.vin);
+                return;
+            }
+            JsonObject profile = selectChargingProfile(profiles);
             ChargingProfile parsed = profile == null ? null : ChargingProfileSupport.parse(profile);
             if (profile == null || parsed == null) {
                 logger.warn("Cannot change charging profile of vehicle {}: {}", config.vin,
                         config.chargingProfile.isBlank() ? "the vehicle is not at a saved charging location"
                                 : "no charging profile '" + config.chargingProfile + "' found");
-                updateChargingProfileChannels(null);
+                updateChargingProfileGroup(profiles);
                 return;
             }
-            JsonObject updated = ChargingProfileSupport.withSetting(profile, value, path);
-            apiClient.updateChargingProfile(config.vin, parsed.id, updated);
-            chargingProfile = updated;
+            apiClient.updateChargingProfile(config.vin, parsed.id,
+                    ChargingProfileSupport.withSetting(profile, value, path));
+            pendingProfileChanges.add(parsed.id, value, path);
+            updateChargingProfileGroup(profiles);
         }
     }
 
@@ -538,6 +671,13 @@ public class MySkodaVehicleHandler extends BaseThingHandler {
         if (command instanceof RefreshType) {
             // commands consume the same quota as polling, so a REFRESH does not trigger an
             // out-of-band API call - the next scheduled poll will update the channel
+            return;
+        }
+        String operation = requiredOperation(channelUID, command);
+        Set<String> supported = supportedOperations;
+        if (operation != null && supported != null && !supported.contains(operation)) {
+            logger.warn("Vehicle {} does not support {}, ignoring command {} to {}", config.vin, operation, command,
+                    channelUID);
             return;
         }
         MySkodaAccountHandler accountHandler = getAccountHandler();

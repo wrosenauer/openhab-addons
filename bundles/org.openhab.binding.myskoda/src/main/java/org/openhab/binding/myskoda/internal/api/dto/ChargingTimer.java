@@ -15,20 +15,19 @@ package org.openhab.binding.myskoda.internal.api.dto;
 import java.util.List;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
-import org.eclipse.jdt.annotation.Nullable;
 
 /**
- * The {@link ChargingProfile} dto is a typed, read-only view of one charging profile. Changes are
- * applied to the raw profile JSON instead, see {@link ChargingProfiles}.
+ * The {@link ChargingTimer} dto is a timer of a charging profile (API schema {@code Timer}).
  *
  * @author Wolfgang Rosenauer - Initial contribution
  */
 @NonNullByDefault
-public class ChargingProfile {
+public class ChargingTimer {
 
     public long id;
-    public String name = "";
-    public @Nullable ChargingProfileSettings settings;
-    public List<ChargingTime> preferredChargingTimes = List.of();
-    public List<ChargingTimer> timers = List.of();
+    public boolean enabled;
+    public String time = "";
+    public String type = "";
+    public String oneOffDay = "";
+    public List<String> recurringOn = List.of();
 }

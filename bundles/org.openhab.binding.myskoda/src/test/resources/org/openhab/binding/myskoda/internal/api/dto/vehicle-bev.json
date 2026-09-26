@@ -60,6 +60,14 @@
       },
       "carCapturedTimestamp": "2026-06-01T12:00:00Z"
     },
+    "operations": [
+      { "name": "startCharging" },
+      { "name": "stopCharging" },
+      { "name": "setChargingLimit" },
+      { "name": "updateChargingProfile" },
+      { "name": "startAirConditioning" },
+      { "name": "stopAirConditioning" }
+    ],
     "chargingProfiles": {
       "profiles": [
         {
@@ -75,7 +83,8 @@
             { "id": 1, "enabled": true, "startTime": "22:00", "endTime": "06:00" }
           ],
           "timers": [
-            { "id": 1, "enabled": true, "time": "07:00", "type": "RECURRING", "recurringOn": ["MONDAY", "FRIDAY"] }
+            { "id": 1, "enabled": true, "time": "07:00", "type": "RECURRING", "recurringOn": ["MONDAY", "FRIDAY"] },
+            { "id": 2, "enabled": false, "time": "06:30", "type": "ONE_OFF", "oneOffDay": "TUESDAY" }
           ]
         },
         {

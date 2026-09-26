@@ -44,6 +44,15 @@
 			</add-channel>
 		</instruction-set>
 
+		<instruction-set targetVersion="3">
+			<add-channel id="timers" groupIds="chargingProfile">
+				<type>myskoda:profile-timers</type>
+			</add-channel>
+			<add-channel id="preferred-charging-times" groupIds="chargingProfile">
+				<type>myskoda:profile-preferred-charging-times</type>
+			</add-channel>
+		</instruction-set>
+
 	</thing-type>
 
 </update:update-descriptions>

@@ -12,6 +12,8 @@
  */
 package org.openhab.binding.myskoda.internal.api.dto;
 
+import java.util.List;
+
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 
@@ -36,4 +38,5 @@ public class Vehicle {
     public @Nullable ActiveVentilation activeVentilation;
     public @Nullable Charging charging;
     public @Nullable ChargingProfiles chargingProfiles;
+    public @Nullable List<VehicleOperation> operations;
 }

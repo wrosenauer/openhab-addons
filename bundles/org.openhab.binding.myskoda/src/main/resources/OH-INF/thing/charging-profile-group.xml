@@ -18,6 +18,8 @@
 			<channel id="auto-unlock-plug" typeId="profile-auto-unlock-plug"/>
 			<channel id="min-state-of-charge-enabled" typeId="min-state-of-charge-enabled"/>
 			<channel id="min-state-of-charge" typeId="min-state-of-charge"/>
+			<channel id="timers" typeId="profile-timers"/>
+			<channel id="preferred-charging-times" typeId="profile-preferred-charging-times"/>
 			<channel id="last-updated" typeId="charging-profile-last-updated"/>
 		</channels>
 	</channel-group-type>
@@ -90,6 +92,20 @@
 		<description>Battery level below which charging starts immediately, if enabled.</description>
 		<category>Battery</category>
 		<state pattern="%.0f %unit%" min="0" max="100"/>
+	</channel-type>
+	<channel-type id="profile-timers" advanced="true">
+		<item-type>String</item-type>
+		<label>Charging Timers</label>
+		<description>Timers of this charging profile as text, e.g. "1: 07:00 Mon, Fri; 2: 06:30 once Tue (off)". Read-only -
+			timers are changed in the MyŠkoda app.</description>
+		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="profile-preferred-charging-times" advanced="true">
+		<item-type>String</item-type>
+		<label>Preferred Charging Times</label>
+		<description>Preferred charging times of this charging profile as text, e.g. "1: 22:00-06:00; 2: 12:00-14:00 (off)".
+			Read-only - they are changed in the MyŠkoda app.</description>
+		<state readOnly="true"/>
 	</channel-type>
 	<channel-type id="charging-profile-last-updated" advanced="true">
 		<item-type>DateTime</item-type>

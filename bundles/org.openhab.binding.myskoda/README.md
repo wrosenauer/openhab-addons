@@ -17,8 +17,9 @@ unofficial API), this binding currently **cannot**:
 - read trip statistics or maintenance/health data
 - change charging settings other than the target state of charge and the charge mode (e.g.
   battery care mode, maximum charge current or auto-unlock of the plug are read-only)
-- edit the timers and preferred charging times of charging profiles (the profile settings -
-  target state of charge, charge current, plug unlock, minimum state of charge - can be changed)
+- edit the timers and preferred charging times of charging profiles - they are shown as read-only
+  text (the profile settings - target state of charge, charge current, plug unlock, minimum state
+  of charge - can be changed)
 - change window heating or "air conditioning at unlock"
 - receive live push updates - there is no MQTT/WebSocket channel, only polling
 
@@ -108,11 +109,27 @@ Channels that can be changed:
   start or stop the respective function.
 - `charging#target-state-of-charge` and `charging#preferred-charge-mode` change the vehicle's
   charging settings immediately (one request each).
-- The settings in the `chargingProfile` group change the shown charging profile immediately (one
-  request each).
+- The settings in the `chargingProfile` group change the shown charging profile immediately (two
+  requests each, see below).
 - The start parameters described below are only sent together with a start command.
 
 All other channels are read-only.
+
+### Unsupported Operations
+
+The API reports which remote operations a vehicle supports. The binding adapts the channels to it
+after the first poll:
+
+- a start/stop switch (`charging-switch`, `air-conditioning-switch`, `auxiliary-heating-switch`,
+  `active-ventilation-switch`) is **removed** from the thing when the vehicle supports neither
+  starting nor stopping, e.g. the auxiliary heating switch of a vehicle without auxiliary heating;
+- a channel that also shows a value (charging limit, charge mode, charging profile settings, start
+  parameters) stays, but becomes **read-only**.
+
+Commands for an operation the vehicle does not support are ignored with a warning in the log
+instead of being sent. If the vehicle later reports an operation as supported, the channel is
+added back or becomes writable again. When the API cannot determine the supported operations,
+all channels stay as they are.
 
 ### Start Parameters
 
@@ -239,13 +256,19 @@ configured, the channels are `UNDEF` and changes are rejected with a warning in 
 | `auto-unlock-plug` | String | `PERMANENT` or `OFF`. |
 | `min-state-of-charge-enabled` | Switch | Charge immediately, regardless of timers, while the battery is below `min-state-of-charge`. |
 | `min-state-of-charge` | Number:Dimensionless | Battery level for immediate charging. |
+| `timers` | String | Timers as text, e.g. `1: 07:00 Mon, Fri; 2: 06:30 once Tue (off)` (read-only). |
+| `preferred-charging-times` | String | Preferred charging times as text, e.g. `1: 22:00-06:00` (read-only). |
 | `last-updated` | DateTime | When the charging profiles were last reported. |
 
 The API only accepts a charging profile as a whole. When one of these settings is changed, the
-binding sends the complete profile as reported by the last poll with just that setting changed -
-timers and preferred charging times are sent back unchanged. If the profile was changed in the
-MyŠkoda app since the last poll, those changes are overwritten; wait for the next poll after
-editing a profile in the app before changing it from openHAB.
+binding first reads the profile again - so changes made in the MyŠkoda app since the last poll
+are kept - and then sends it back complete, with just that setting changed. Timers and preferred
+charging times are sent back unchanged. A change therefore costs **two** requests.
+
+The vehicle applies a profile change with some delay, so for a while the API still reports the
+previous value. The binding remembers its own changes and keeps showing (and sending) them until
+the vehicle reports them, for at most 10 minutes - so several settings can be changed one after
+another without one change undoing the previous one.
 
 `charging#target-state-of-charge` and `chargingProfile#target-state-of-charge` are different
 settings: the first is the vehicle's current charging limit, the second the limit stored in the
@@ -283,6 +306,7 @@ Location    MySkoda_Location          "Location"              { channel="myskoda
 | Vehicle `OFFLINE` with a configuration error after the first poll | The key does not cover this VIN (or is invalid). Check the VIN, or create a key that includes the vehicle.                                                |
 | Vehicle `OFFLINE`, rate limit message                          | The vehicle's hourly quota is used up. It comes back online by itself; increase `refreshInterval` or send fewer commands.                                    |
 | A command has no effect, warning in the log                    | The vehicle refused the operation (not supported, currently disabled, not authorized for your user, or temporarily not accepting requests). The log shows the reason. |
+| A switch channel disappeared, or a setting cannot be changed any more | The vehicle does not support the operation, see [Unsupported Operations](#unsupported-operations). |
 | `chargingProfile` channels are `UNDEF`, changes are rejected | The vehicle is not at a saved charging location, or no profile matches the `chargingProfile` parameter. Set the parameter to the profile's name as shown in the app (or its id). |
 | `target-state-of-charge` is rejected                           | Most vehicles only accept 50 to 100 % in steps of 10; the log lists the values the vehicle accepts.                                                        |
 
@@ -300,6 +324,10 @@ dates below refer to the entries in the [changelog](#changelog).
   `.things` files always use the current channel list anyway. Only if the channels are still
   missing, delete and re-add the `vehicle` thing.
 - **New channel group `chargingProfile`** - also added automatically, like the plug channels.
+- **Unsupported controls are removed:** after the first poll, start/stop switches of operations
+  your vehicle does not support are removed from the thing (see
+  [Unsupported Operations](#unsupported-operations)). Items linked to such a channel keep an orphaned link
+  that you can delete; they never worked for that vehicle anyway.
 - **Channels that became writable** (`target-state-of-charge`, `preferred-charge-mode`,
   `without-external-power`, `start-mode`) change without any action. Check your rules: a
   `sendCommand` to `target-state-of-charge` or `preferred-charge-mode` now **changes the
@@ -331,7 +359,11 @@ dates below refer to the entries in the [changelog](#changelog).
 - New `chargingProfile` channel group to view and change the settings of a charging profile
   (target state of charge, max charge current, plug auto-unlock, minimum state of charge), using
   `PUT /charging-profiles/{id}`, and new `chargingProfile` configuration parameter to select
-  the profile.
+  the profile. The profile is read again before each change, and changes the vehicle has not
+  reported yet are kept so consecutive changes do not undo each other. Timers and preferred
+  charging times are shown as read-only text.
+- Controls of operations the vehicle does not support are removed, and settings it cannot change
+  become read-only; commands for them are no longer sent.
 - New channels `plug-connection-state` and `plug-lock-state` (API 1.1.0), and new `vehicle`
   properties `vehicleName` and `licensePlate`.
 - The quota is tracked per VIN, as documented by the API, instead of per API key.

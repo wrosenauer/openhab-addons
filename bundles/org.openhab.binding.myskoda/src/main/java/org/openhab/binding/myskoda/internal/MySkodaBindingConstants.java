@@ -131,6 +131,21 @@ public class MySkodaBindingConstants {
     public static final String CHANNEL_NEXT_CHARGING_TIME = "next-charging-time";
     public static final String CHANNEL_MIN_STATE_OF_CHARGE_ENABLED = "min-state-of-charge-enabled";
     public static final String CHANNEL_MIN_STATE_OF_CHARGE = "min-state-of-charge";
+    public static final String CHANNEL_TIMERS = "timers";
+    public static final String CHANNEL_PREFERRED_CHARGING_TIMES = "preferred-charging-times";
+
+    // remote operations, as reported in the vehicle's operations list (the API's operationIds)
+    public static final String OPERATION_START_CHARGING = "startCharging";
+    public static final String OPERATION_STOP_CHARGING = "stopCharging";
+    public static final String OPERATION_SET_CHARGING_LIMIT = "setChargingLimit";
+    public static final String OPERATION_SET_CHARGE_MODE = "setChargeMode";
+    public static final String OPERATION_UPDATE_CHARGING_PROFILE = "updateChargingProfile";
+    public static final String OPERATION_START_AIR_CONDITIONING = "startAirConditioning";
+    public static final String OPERATION_STOP_AIR_CONDITIONING = "stopAirConditioning";
+    public static final String OPERATION_START_AUXILIARY_HEATING = "startAuxiliaryHeating";
+    public static final String OPERATION_STOP_AUXILIARY_HEATING = "stopAuxiliaryHeating";
+    public static final String OPERATION_START_ACTIVE_VENTILATION = "startActiveVentilation";
+    public static final String OPERATION_STOP_ACTIVE_VENTILATION = "stopActiveVentilation";
 
     // shared "last updated" channel id used in status/odometer/fuel/charging/climate groups
     public static final String CHANNEL_LAST_UPDATED = "last-updated";

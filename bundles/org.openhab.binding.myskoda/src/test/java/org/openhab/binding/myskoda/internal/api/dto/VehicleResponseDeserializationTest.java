@@ -71,6 +71,10 @@ class VehicleResponseDeserializationTest {
         assertThat(vehicle.charging.settings.targetStateOfChargeInPercent, is(80));
         assertThat(vehicle.charging.settings.availableChargeModes, is(List.of("MANUAL", "TIMER")));
 
+        assertThat(vehicle.operations, notNullValue());
+        assertThat(vehicle.operations.size(), is(6));
+        assertThat(vehicle.operations.get(0).name, is("startCharging"));
+
         assertThat(vehicle.chargingProfiles, notNullValue());
         assertThat(vehicle.chargingProfiles.profiles.size(), is(2));
         assertThat(vehicle.chargingProfiles.currentVehiclePositionProfile, notNullValue());

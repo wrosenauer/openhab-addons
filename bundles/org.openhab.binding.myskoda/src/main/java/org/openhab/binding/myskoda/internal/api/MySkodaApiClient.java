@@ -85,9 +85,14 @@ public class MySkodaApiClient {
         return apiKeyExpiresAt;
     }
 
-    public VehicleResponse getVehicle(String vin)
+    /**
+     * @param include the parts of the vehicle data to return (e.g. {@code chargingProfiles}); all parts
+     *            the vehicle supports when empty
+     */
+    public VehicleResponse getVehicle(String vin, String... include)
             throws MySkodaApiException, MySkodaAuthException, MySkodaRateLimitException, InterruptedException {
-        ContentResponse response = execute(HttpMethod.GET, vin, "", null);
+        ContentResponse response = execute(HttpMethod.GET, vin,
+                include.length == 0 ? "" : "?include=" + String.join(",", include), null);
         try {
             VehicleResponse vehicleResponse = gson.fromJson(response.getContentAsString(), VehicleResponse.class);
             return vehicleResponse == null ? new VehicleResponse() : vehicleResponse;
